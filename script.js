@@ -4,13 +4,15 @@ const TILE_SIZE = 85;
 const BOARD_OFFSET_X = 75;
 const BOARD_OFFSET_Y = 320;
 
-// Configuration for 5 original, distinct Lumens
-const LUMEN_CONFIGS = [
-  { id: 0, name: 'Aether', color: 0x38BDF8, shape: 'diamond' },
-  { id: 1, name: 'Verdant', color: 0x34D399, shape: 'hexagon' },
-  { id: 2, name: 'Solar', color: 0xFBBF24, shape: 'star' },
-  { id: 3, name: 'Cosmic', color: 0xA855F7, shape: 'teardrop' },
-  { id: 4, name: 'Blaze', color: 0xF43F5E, shape: 'shield' }
+// All 7 Lumens with their corresponding line colors
+const LUMEN_DATA = [
+  { name: 'aether', color: 0x38bdf8 },  // Cyan
+  { name: 'verdant', color: 0x34d399 }, // Green
+  { name: 'solar', color: 0xfbbf24 },   // Gold
+  { name: 'cosmic', color: 0xc084fc },  // Purple
+  { name: 'blaze', color: 0xf43f5e },   // Red
+  { name: 'terra', color: 0xf97316 },   // Orange
+  { name: 'nova', color: 0xf472b6 }     // Pink
 ];
 
 const config = {
@@ -23,6 +25,7 @@ const config = {
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
   scene: {
+    preload: preload,
     create: create
   }
 };
@@ -38,11 +41,16 @@ let score = 0;
 let scoreText;
 let isAnimating = false;
 
+function preload() {
+  // Load both Open and Closed states for all 7 Lumens
+  LUMEN_DATA.forEach(lumen => {
+    this.load.image(`${lumen.name}_open`, `assets/${lumen.name}_open.png`);
+    this.load.image(`${lumen.name}_closed`, `assets/${lumen.name}_closed.png`);
+  });
+}
+
 function create() {
   const scene = this;
-
-  // Generate original vector textures for each Lumen shape
-  generateLumenTextures(scene);
 
   scoreText = scene.add.text(330, 120, 'SCORE: 0', {
     fontSize: '36px',
@@ -50,7 +58,7 @@ function create() {
     color: '#FFFFFF'
   }).setOrigin(0.5);
 
-  scene.add.text(330, 170, 'Connect 3 or more matching energy Lumens', {
+  scene.add.text(330, 170, 'Connect 3 or more resting spirits to wake them', {
     fontSize: '18px',
     color: '#94A3B8'
   }).setOrigin(0.5);
@@ -60,106 +68,84 @@ function create() {
 
   spawnGrid(scene);
 
+  // Global Blinking System: Triggers a "peek" every 1 to 2.5 seconds
+  scene.time.addEvent({
+    delay: 1500,
+    loop: true,
+    callback: () => triggerRandomPeek(scene)
+  });
+
   scene.input.on('pointerup', () => endConnection(scene));
   scene.input.on('pointermove', (pointer) => handlePointerMove(scene, pointer));
-}
-
-// Procedurally draws original, polished Lumens with highlights and distinct shapes
-function generateLumenTextures(scene) {
-  LUMEN_CONFIGS.forEach(cfg => {
-    const g = scene.make.graphics({ x: 0, y: 0, add: false });
-    const size = 32;
-
-    // Outer Glow / Rim
-    g.lineStyle(3, 0xFFFFFF, 0.9);
-    g.fillStyle(cfg.color, 1);
-
-    if (cfg.shape === 'diamond') {
-      // 4-sided balanced diamond
-      g.beginPath();
-      g.moveTo(0, -size);
-      g.lineTo(size * 0.85, 0);
-      g.lineTo(0, size);
-      g.lineTo(-size * 0.85, 0);
-      g.closePath();
-      g.fillPath();
-      g.strokePath();
-    } else if (cfg.shape === 'hexagon') {
-      // 6-sided geometric polygon
-      g.beginPath();
-      for (let i = 0; i < 6; i++) {
-        const angle = (Math.PI / 3) * i;
-        const hx = Math.cos(angle) * (size * 0.9);
-        const hy = Math.sin(angle) * (size * 0.9);
-        if (i === 0) g.moveTo(hx, hy);
-        else g.lineTo(hx, hy);
-      }
-      g.closePath();
-      g.fillPath();
-      g.strokePath();
-    } else if (cfg.shape === 'star') {
-      // 4-pointed sharp energy flare
-      g.beginPath();
-      g.moveTo(0, -size);
-      g.lineTo(size * 0.3, -size * 0.3);
-      g.lineTo(size, 0);
-      g.lineTo(size * 0.3, size * 0.3);
-      g.lineTo(0, size);
-      g.lineTo(-size * 0.3, size * 0.3);
-      g.lineTo(-size, 0);
-      g.lineTo(-size * 0.3, -size * 0.3);
-      g.closePath();
-      g.fillPath();
-      g.strokePath();
-    } else if (cfg.shape === 'teardrop') {
-      // Pointed droplet
-      g.beginPath();
-      g.moveTo(0, -size);
-      g.lineTo(size * 0.8, size * 0.3);
-      g.arc(0, size * 0.3, size * 0.8, 0, Math.PI, false);
-      g.lineTo(0, -size);
-      g.closePath();
-      g.fillPath();
-      g.strokePath();
-    } else if (cfg.shape === 'shield') {
-      // Downward-pointing prism / shield
-      g.beginPath();
-      g.moveTo(-size * 0.85, -size * 0.7);
-      g.lineTo(size * 0.85, -size * 0.7);
-      g.lineTo(size * 0.7, size * 0.2);
-      g.lineTo(0, size);
-      g.lineTo(-size * 0.7, size * 0.2);
-      g.closePath();
-      g.fillPath();
-      g.strokePath();
-    }
-
-    // Inner bright energy core highlight
-    g.fillStyle(0xFFFFFF, 0.45);
-    g.fillCircle(0, 0, size * 0.32);
-
-    g.generateTexture(`lumen_${cfg.id}`, 74, 74);
-    g.destroy();
-  });
 }
 
 function spawnGrid(scene) {
   for (let r = 0; r < GRID_ROWS; r++) {
     board[r] = [];
     for (let c = 0; c < GRID_COLS; c++) {
-      const type = Phaser.Math.Between(0, LUMEN_CONFIGS.length - 1);
+      const type = Phaser.Math.Between(0, LUMEN_DATA.length - 1);
+      const lumenData = LUMEN_DATA[type];
       const x = BOARD_OFFSET_X + c * TILE_SIZE + TILE_SIZE / 2;
       const y = BOARD_OFFSET_Y + r * TILE_SIZE + TILE_SIZE / 2;
 
-      const sprite = scene.add.image(x, y, `lumen_${type}`);
+      // Default state: Closed eyes (sleeping/resting)
+      const sprite = scene.add.image(x, y, `${lumenData.name}_closed`);
 
-      board[r][c] = {
+      const lumen = {
         sprite: sprite,
         type: type,
+        name: lumenData.name,
+        color: lumenData.color,
         row: r,
-        col: c
+        col: c,
+        baseY: y,
+        floatTween: null
       };
+
+      startFloating(scene, lumen);
+      board[r][c] = lumen;
     }
+  }
+}
+
+// Organic float + slight squash/stretch for breathing effect
+function startFloating(scene, lumen) {
+  if (lumen.floatTween) lumen.floatTween.stop();
+
+  const randomDelay = Phaser.Math.Between(0, 1000);
+  const randomDuration = Phaser.Math.Between(1500, 2000);
+
+  lumen.floatTween = scene.tweens.add({
+    targets: lumen.sprite,
+    y: lumen.baseY - 6,
+    scaleX: 1.02,
+    scaleY: 0.98,
+    duration: randomDuration,
+    delay: randomDelay,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut'
+  });
+}
+
+// Randomly picks a sleeping Lumen to quickly open its eyes, then go back to sleep
+function triggerRandomPeek(scene) {
+  if (isAnimating) return;
+
+  const r = Phaser.Math.Between(0, GRID_ROWS - 1);
+  const c = Phaser.Math.Between(0, GRID_COLS - 1);
+  const lumen = board[r][c];
+
+  if (lumen && lumen.sprite && !selectedLumens.includes(lumen)) {
+    // Wake up (Peek)
+    lumen.sprite.setTexture(`${lumen.name}_open`);
+
+    // Go back to sleep after 200ms
+    scene.time.delayedCall(200, () => {
+      if (lumen && lumen.sprite && !selectedLumens.includes(lumen)) {
+        lumen.sprite.setTexture(`${lumen.name}_closed`);
+      }
+    });
   }
 }
 
@@ -173,25 +159,24 @@ function handlePointerMove(scene, pointer) {
 
       const dist = Phaser.Math.Distance.Between(pointer.x, pointer.y, lumen.sprite.x, lumen.sprite.y);
 
-      if (dist < 38) {
+      if (dist < 40) {
         if (!isDragging) {
           isDragging = true;
           currentType = lumen.type;
-          addLumenToChain(lumen);
+          addLumenToChain(scene, lumen);
         } else if (lumen.type === currentType) {
-          // Allow backtracking/undo
+          // Undo last selection if dragging backward over previous Lumen
           if (selectedLumens.length > 1 && lumen === selectedLumens[selectedLumens.length - 2]) {
             const removed = selectedLumens.pop();
-            removed.sprite.setScale(1.0);
+            resetLumenVisual(scene, removed);
             drawLine();
           } else if (!selectedLumens.includes(lumen)) {
             const last = selectedLumens[selectedLumens.length - 1];
             const rowDiff = Math.abs(last.row - lumen.row);
             const colDiff = Math.abs(last.col - lumen.col);
 
-            // Horizontal, vertical, and diagonal connection
             if (rowDiff <= 1 && colDiff <= 1) {
-              addLumenToChain(lumen);
+              addLumenToChain(scene, lumen);
             }
           }
         }
@@ -200,17 +185,47 @@ function handlePointerMove(scene, pointer) {
   }
 }
 
-function addLumenToChain(lumen) {
+function addLumenToChain(scene, lumen) {
   selectedLumens.push(lumen);
-  lumen.sprite.setScale(1.25);
+
+  if (lumen.floatTween) lumen.floatTween.pause();
+  
+  // Wake up when touched!
+  lumen.sprite.setTexture(`${lumen.name}_open`);
+
+  scene.tweens.add({
+    targets: lumen.sprite,
+    scaleX: 1.25,
+    scaleY: 1.25,
+    duration: 120,
+    ease: 'Back.easeOut'
+  });
+
   drawLine();
+}
+
+function resetLumenVisual(scene, lumen) {
+  // Go back to sleep if un-selected
+  lumen.sprite.setTexture(`${lumen.name}_closed`);
+  
+  scene.tweens.add({
+    targets: lumen.sprite,
+    scaleX: 1.0,
+    scaleY: 1.0,
+    duration: 120,
+    ease: 'Quad.easeOut',
+    onComplete: () => {
+      if (lumen.floatTween) lumen.floatTween.resume();
+    }
+  });
 }
 
 function drawLine() {
   lineLayer.clear();
   if (selectedLumens.length < 2) return;
 
-  const activeColor = LUMEN_CONFIGS[currentType].color;
+  // Match line color to the specific Lumen being dragged
+  const activeColor = LUMEN_DATA[currentType].color;
   lineLayer.lineStyle(8, activeColor, 0.95);
   lineLayer.beginPath();
   lineLayer.moveTo(selectedLumens[0].sprite.x, selectedLumens[0].sprite.y);
@@ -232,19 +247,23 @@ function endConnection(scene) {
     scoreText.setText('SCORE: ' + score);
 
     selectedLumens.forEach(lumen => {
+      if (lumen.floatTween) lumen.floatTween.stop();
+
       scene.tweens.add({
         targets: lumen.sprite,
         scale: 0,
         alpha: 0,
-        duration: 150,
+        duration: 160,
+        ease: 'Back.easeIn',
         onComplete: () => lumen.sprite.destroy()
       });
       board[lumen.row][lumen.col] = null;
     });
 
-    scene.time.delayedCall(160, () => applyGravity(scene));
+    scene.time.delayedCall(180, () => applyGravity(scene));
   } else {
-    selectedLumens.forEach(lumen => lumen.sprite.setScale(1.0));
+    // If not a valid match, put them all back to sleep
+    selectedLumens.forEach(lumen => resetLumenVisual(scene, lumen));
   }
 
   selectedLumens = [];
@@ -268,44 +287,58 @@ function applyGravity(scene) {
         board[r][c] = null;
         piece.row = newRow;
 
-        let targetY = BOARD_OFFSET_Y + newRow * TILE_SIZE + TILE_SIZE / 2;
-        let duration = 220 + (emptySlots * 35);
+        const targetY = BOARD_OFFSET_Y + newRow * TILE_SIZE + TILE_SIZE / 2;
+        piece.baseY = targetY;
+
+        if (piece.floatTween) piece.floatTween.stop();
+
+        const duration = 220 + (emptySlots * 35);
         if (duration > longestAnimation) longestAnimation = duration;
 
         scene.tweens.add({
           targets: piece.sprite,
           y: targetY,
           duration: duration,
-          ease: 'Bounce.easeOut'
+          ease: 'Bounce.easeOut',
+          onComplete: () => startFloating(scene, piece)
         });
       }
     }
 
     for (let i = 0; i < emptySlots; i++) {
       let r = emptySlots - 1 - i;
-      let type = Phaser.Math.Between(0, LUMEN_CONFIGS.length - 1);
+      let type = Phaser.Math.Between(0, LUMEN_DATA.length - 1);
+      let lumenData = LUMEN_DATA[type];
 
       let targetX = BOARD_OFFSET_X + c * TILE_SIZE + TILE_SIZE / 2;
       let targetY = BOARD_OFFSET_Y + r * TILE_SIZE + TILE_SIZE / 2;
       let startY = BOARD_OFFSET_Y - (i + 2) * TILE_SIZE;
 
-      let sprite = scene.add.image(targetX, startY, `lumen_${type}`);
+      // New pieces fall in asleep
+      let sprite = scene.add.image(targetX, startY, `${lumenData.name}_closed`);
 
-      board[r][c] = {
+      const lumen = {
         sprite: sprite,
         type: type,
+        name: lumenData.name,
+        color: lumenData.color,
         row: r,
-        col: c
+        col: c,
+        baseY: targetY,
+        floatTween: null
       };
 
-      let duration = 300 + (i * 50);
+      board[r][c] = lumen;
+
+      const duration = 300 + (i * 50);
       if (duration > longestAnimation) longestAnimation = duration;
 
       scene.tweens.add({
         targets: sprite,
         y: targetY,
         duration: duration,
-        ease: 'Bounce.easeOut'
+        ease: 'Bounce.easeOut',
+        onComplete: () => startFloating(scene, lumen)
       });
     }
   }
