@@ -25,6 +25,7 @@ const config = {
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
   scene: {
+    preload: preload,
     create: create
   }
 };
@@ -45,16 +46,22 @@ let scoreText, movesText;
 let progressBar, starIcons = [];
 let isAnimating = false;
 
+// --- LOAD BACKGROUND IMAGE ---
+function preload() {
+  // Loads the background image you generated and uploaded
+  this.load.image('bg', 'game_bg.png');
+}
+
 function create() {
   const scene = this;
 
-  // 1. Draw Magical Background
-  createBackground(scene);
+  // 1. Add the Image Background to the very back
+  scene.add.image(330, 530, 'bg').setDepth(-10);
 
   // 2. Generate perfect Lumen textures in memory
   generateAllCanvasTextures(scene);
 
-  // 3. Build UI & Board
+  // 3. Build UI & Board with the new kid-friendly colors
   buildUserInterface(scene);
   drawBoardGrid(scene);
 
@@ -72,38 +79,6 @@ function create() {
 
   scene.input.on('pointerup', () => endConnection(scene));
   scene.input.on('pointermove', (pointer) => handlePointerMove(scene, pointer));
-}
-
-// --- NEW MAGICAL BACKGROUND ---
-function createBackground(scene) {
-  const bg = scene.add.graphics();
-  bg.setDepth(-10);
-
-  // Cosmic Gradient (Dark Blue to Deep Purple)
-  bg.fillGradientStyle(0x050811, 0x050811, 0x1A1433, 0x0B122A, 1);
-  bg.fillRect(0, 0, 660, 1060);
-
-  // Floating Energy Particles
-  for (let i = 0; i < 40; i++) {
-    const startX = Phaser.Math.Between(0, 660);
-    const startY = Phaser.Math.Between(0, 1060);
-    const radius = Phaser.Math.FloatBetween(1.5, 3.5);
-    const alpha = Phaser.Math.FloatBetween(0.1, 0.4);
-
-    const particle = scene.add.circle(startX, startY, radius, 0x38BDF8, alpha);
-    particle.setDepth(-9);
-
-    scene.tweens.add({
-      targets: particle,
-      y: startY - Phaser.Math.Between(150, 400),
-      x: startX + Phaser.Math.Between(-30, 30),
-      alpha: 0,
-      duration: Phaser.Math.Between(5000, 10000),
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-      delay: Phaser.Math.Between(0, 5000)
-    });
-  }
 }
 
 // --- FLAWLESS CANVAS TEXTURE GENERATOR ---
@@ -158,7 +133,7 @@ function createCanvasTexture(scene, cfg, isOpen) {
       const x = Math.cos(angle) * 28;
       const y = Math.sin(angle) * 28;
       if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+      else g.lineTo(x, y);
     }
   } else if (cfg.shape === 'heart') {
     ctx.moveTo(0, 14);
@@ -179,7 +154,7 @@ function createCanvasTexture(scene, cfg, isOpen) {
 
   ctx.shadowBlur = 0;
   ctx.save();
-  ctx.clip(); // PERFECT CLIPPING FOR EYES & CHEEKS
+  ctx.clip(); 
 
   ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
   ctx.beginPath();
@@ -280,34 +255,39 @@ function createCanvasTexture(scene, cfg, isOpen) {
 }
 
 
-// --- UI & BOARD SETUP ---
+// --- NEW KID-FRIENDLY UI COLORS ---
 function buildUserInterface(scene) {
   const ui = scene.add.graphics();
   ui.setDepth(5);
 
-  ui.fillStyle(0x0C1222, 0.85);
-  ui.fillRoundedRect(30, 24, 600, 96, 20);
-  ui.lineStyle(2, 0x1E2E4A, 0.9);
-  ui.strokeRoundedRect(30, 24, 600, 96, 20);
+  // Top Glass Header Card (Deep Plum/Pink Base)
+  ui.fillStyle(0x4a044e, 0.9); 
+  ui.fillRoundedRect(30, 24, 600, 96, 24);
+  ui.lineStyle(3, 0xfbcfe8, 1); // Soft Pink Border
+  ui.strokeRoundedRect(30, 24, 600, 96, 24);
 
-  ui.fillStyle(0x1B253D, 1);
-  ui.fillRoundedRect(44, 36, 110, 72, 14);
-  scene.add.text(99, 56, 'LEVEL', { fontSize: '13px', fontStyle: 'bold', color: '#64748B' }).setOrigin(0.5).setDepth(6);
-  scene.add.text(99, 82, '1', { fontSize: '26px', fontStyle: 'bold', color: '#38BDF8' }).setOrigin(0.5).setDepth(6);
+  // Level Badge (Left)
+  ui.fillStyle(0x701a75, 1);
+  ui.fillRoundedRect(44, 36, 110, 72, 16);
+  scene.add.text(99, 56, 'LEVEL', { fontSize: '13px', fontStyle: 'bold', color: '#f9a8d4' }).setOrigin(0.5).setDepth(6);
+  scene.add.text(99, 82, '1', { fontSize: '26px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5).setDepth(6);
 
-  scene.add.text(260, 56, 'TARGET', { fontSize: '13px', fontStyle: 'bold', color: '#64748B' }).setOrigin(0.5).setDepth(6);
-  scene.add.text(260, 82, `${TARGET_SCORE}`, { fontSize: '22px', fontStyle: 'bold', color: '#F1F5F9' }).setOrigin(0.5).setDepth(6);
+  // Target Score (Middle)
+  scene.add.text(260, 56, 'TARGET', { fontSize: '13px', fontStyle: 'bold', color: '#f9a8d4' }).setOrigin(0.5).setDepth(6);
+  scene.add.text(260, 82, `${TARGET_SCORE}`, { fontSize: '22px', fontStyle: 'bold', color: '#FFFFFF' }).setOrigin(0.5).setDepth(6);
 
-  ui.fillStyle(0x1B253D, 1);
-  ui.fillRoundedRect(480, 36, 136, 72, 14);
-  scene.add.text(548, 56, 'MOVES', { fontSize: '13px', fontStyle: 'bold', color: '#64748B' }).setOrigin(0.5).setDepth(6);
-  movesText = scene.add.text(548, 82, `${movesRemaining}`, { fontSize: '26px', fontStyle: 'bold', color: '#F59E0B' }).setOrigin(0.5).setDepth(6);
+  // Moves Left Badge (Right)
+  ui.fillStyle(0x701a75, 1);
+  ui.fillRoundedRect(480, 36, 136, 72, 16);
+  scene.add.text(548, 56, 'MOVES', { fontSize: '13px', fontStyle: 'bold', color: '#f9a8d4' }).setOrigin(0.5).setDepth(6);
+  movesText = scene.add.text(548, 82, `${movesRemaining}`, { fontSize: '26px', fontStyle: 'bold', color: '#FCD34D' }).setOrigin(0.5).setDepth(6);
 
-  scoreText = scene.add.text(48, 146, 'SCORE: 0', { fontSize: '20px', fontStyle: 'bold', color: '#E2E8F0' }).setDepth(6);
+  // Score & Star Progress Bar Section
+  scoreText = scene.add.text(48, 146, 'SCORE: 0', { fontSize: '20px', fontStyle: 'bold', color: '#FFFFFF' }).setDepth(6);
 
-  ui.fillStyle(0x131D31, 1);
+  ui.fillStyle(0x4a044e, 0.9);
   ui.fillRoundedRect(42, 180, 576, 20, 10);
-  ui.lineStyle(1.5, 0x1E293B, 1);
+  ui.lineStyle(2, 0xfbcfe8, 1);
   ui.strokeRoundedRect(42, 180, 576, 20, 10);
 
   progressBar = scene.add.graphics().setDepth(6);
@@ -317,25 +297,26 @@ function buildUserInterface(scene) {
   starFractions.forEach((pct) => {
     const starX = 42 + 576 * pct;
     const starY = 190;
-    const starBg = scene.add.circle(starX, starY, 14, 0x1B253D).setStrokeStyle(2, 0x334155).setDepth(7);
-    const starGlyph = scene.add.text(starX, starY - 1, '★', { fontSize: '15px', color: '#475569' }).setOrigin(0.5).setDepth(8);
+    const starBg = scene.add.circle(starX, starY, 15, 0x701a75).setStrokeStyle(3, 0xfbcfe8).setDepth(7);
+    const starGlyph = scene.add.text(starX, starY - 1, '★', { fontSize: '16px', color: '#fbcfe8' }).setOrigin(0.5).setDepth(8);
     starIcons.push({ bg: starBg, text: starGlyph, unlocked: false, threshold: TARGET_SCORE * pct });
   });
 
-  ui.fillStyle(0x0C1222, 0.85);
-  ui.fillRoundedRect(42, 930, 576, 90, 20);
-  ui.lineStyle(2, 0x1E2E4A, 0.9);
-  ui.strokeRoundedRect(42, 930, 576, 90, 20);
+  // Bottom Utility Dock
+  ui.fillStyle(0x4a044e, 0.9);
+  ui.fillRoundedRect(42, 930, 576, 90, 24);
+  ui.lineStyle(3, 0xfbcfe8, 1);
+  ui.strokeRoundedRect(42, 930, 576, 90, 24);
 
   const boosterNames = ['SHUFFLE', 'BOMB', 'BURST'];
   boosterNames.forEach((label, i) => {
     const btnX = 110 + i * 175;
     const btnY = 975;
-    ui.fillStyle(0x172238, 1);
-    ui.fillRoundedRect(btnX - 65, btnY - 30, 130, 60, 14);
-    ui.lineStyle(1.5, 0x2A3B5C, 1);
-    ui.strokeRoundedRect(btnX - 65, btnY - 30, 130, 60, 14);
-    scene.add.text(btnX, btnY, label, { fontSize: '15px', fontStyle: 'bold', color: '#94A3B8' }).setOrigin(0.5).setDepth(6);
+    ui.fillStyle(0x701a75, 1);
+    ui.fillRoundedRect(btnX - 65, btnY - 30, 130, 60, 16);
+    ui.lineStyle(2, 0xf9a8d4, 1);
+    ui.strokeRoundedRect(btnX - 65, btnY - 30, 130, 60, 16);
+    scene.add.text(btnX, btnY, label, { fontSize: '15px', fontStyle: 'bold', color: '#FFFFFF' }).setOrigin(0.5).setDepth(6);
   });
 }
 
@@ -344,44 +325,52 @@ function updateProgressBar(currentScore) {
   const fillWidth = Math.min(576, (currentScore / TARGET_SCORE) * 576);
 
   if (fillWidth > 0) {
-    progressBar.fillStyle(0x38BDF8, 1);
+    progressBar.fillStyle(0xFCD34D, 1); // Bright yellow progress bar
     progressBar.fillRoundedRect(42, 180, fillWidth, 20, 10);
   }
 
   starIcons.forEach(star => {
     if (!star.unlocked && currentScore >= star.threshold) {
       star.unlocked = true;
-      star.bg.setStrokeStyle(2, 0xFBBF24);
-      star.text.setColor('#FBBF24');
+      star.bg.setFillStyle(0xFBBF24); // Solid gold circle
+      star.bg.setStrokeStyle(3, 0xFFFFFF); // White rim
+      star.text.setColor('#FFFFFF'); // White star inside gold
     }
   });
 }
 
+// --- NEW PINK BOARD CONTAINER ---
 function drawBoardGrid(scene) {
   const bg = scene.add.graphics();
   bg.setDepth(0);
 
-  const boardW = GRID_COLS * TILE_SIZE + 20;
-  const boardH = GRID_ROWS * TILE_SIZE + 20;
-  const boardX = BOARD_OFFSET_X - 10;
-  const boardY = BOARD_OFFSET_Y - 10;
+  const boardW = GRID_COLS * TILE_SIZE + 24;
+  const boardH = GRID_ROWS * TILE_SIZE + 24;
+  const boardX = BOARD_OFFSET_X - 12;
+  const boardY = BOARD_OFFSET_Y - 12;
 
-  bg.fillStyle(0x090D1A, 0.7);
-  bg.fillRoundedRect(boardX, boardY, boardW, boardH, 20);
-  bg.lineStyle(2, 0x1E293B, 0.8);
-  bg.strokeRoundedRect(boardX, boardY, boardW, boardH, 20);
+  // Deep plum/magenta outer board container
+  bg.fillStyle(0x4a044e, 0.85); 
+  bg.fillRoundedRect(boardX, boardY, boardW, boardH, 24);
+  // Nice light pink border for the outer box
+  bg.lineStyle(4, 0xfbcfe8, 1); 
+  bg.strokeRoundedRect(boardX, boardY, boardW, boardH, 24);
 
+  // Individual separated grid boxes (Pink background under Lumens!)
   for (let r = 0; r < GRID_ROWS; r++) {
     for (let c = 0; c < GRID_COLS; c++) {
-      const cellGap = 7;
+      const cellGap = 6;
       const cellX = BOARD_OFFSET_X + c * TILE_SIZE + cellGap;
       const cellY = BOARD_OFFSET_Y + r * TILE_SIZE + cellGap;
       const cellSize = TILE_SIZE - (cellGap * 2);
 
-      bg.fillStyle(0x11192E, 0.8);
-      bg.fillRoundedRect(cellX, cellY, cellSize, cellSize, 14);
-      bg.lineStyle(1.5, 0x1E2E4A, 0.5);
-      bg.strokeRoundedRect(cellX, cellY, cellSize, cellSize, 14);
+      // Cute Pink cell background
+      bg.fillStyle(0xbe185d, 0.6); 
+      bg.fillRoundedRect(cellX, cellY, cellSize, cellSize, 16);
+      
+      // Bright neon pink cell border
+      bg.lineStyle(2, 0xf472b6, 0.9); 
+      bg.strokeRoundedRect(cellX, cellY, cellSize, cellSize, 16);
     }
   }
 }
@@ -525,7 +514,7 @@ function drawLine() {
   if (selectedLumens.length < 2) return;
 
   const activeColor = LUMEN_CONFIGS[currentType].color;
-  lineLayer.lineStyle(8, activeColor, 0.95);
+  lineLayer.lineStyle(8, activeColor, 1); // Fully solid bright line
   lineLayer.beginPath();
   lineLayer.moveTo(selectedLumens[0].sprite.x, selectedLumens[0].sprite.y);
 
