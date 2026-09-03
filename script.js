@@ -4,15 +4,15 @@ const TILE_SIZE = 85;
 const BOARD_OFFSET_X = 75;
 const BOARD_OFFSET_Y = 320;
 
-// All 7 Lumens with their corresponding line colors
-const LUMEN_DATA = [
-  { name: 'aether', color: 0x38bdf8 },  // Cyan
-  { name: 'verdant', color: 0x34d399 }, // Green
-  { name: 'solar', color: 0xfbbf24 },   // Gold
-  { name: 'cosmic', color: 0xc084fc },  // Purple
-  { name: 'blaze', color: 0xf43f5e },   // Red
-  { name: 'terra', color: 0xf97316 },   // Orange
-  { name: 'nova', color: 0xf472b6 }     // Pink
+// All 7 Original Lumens
+const LUMEN_CONFIGS = [
+  { name: 'aether',  base: 0x0284c7, light: 0x38bdf8, shape: 'diamond', faceY: 3,  color: 0x38bdf8 },
+  { name: 'verdant', base: 0x059669, light: 0x34d399, shape: 'droplet', faceY: 6,  color: 0x34d399 },
+  { name: 'solar',   base: 0xd97706, light: 0xfbbf24, shape: 'star',    faceY: 2,  color: 0xfbbf24 },
+  { name: 'cosmic',  base: 0x7c3aed, light: 0xc084fc, shape: 'round',   faceY: 0,  color: 0xc084fc },
+  { name: 'blaze',   base: 0xbe123c, light: 0xf43f5e, shape: 'flame',   faceY: 7,  color: 0xf43f5e },
+  { name: 'terra',   base: 0xc2410c, light: 0xf97316, shape: 'hexagon', faceY: 0,  color: 0xf97316 },
+  { name: 'nova',    base: 0xbe185d, light: 0xf472b6, shape: 'heart',   faceY: -3, color: 0xf472b6 }
 ];
 
 const config = {
@@ -25,7 +25,6 @@ const config = {
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
   scene: {
-    preload: preload,
     create: create
   }
 };
@@ -41,16 +40,10 @@ let score = 0;
 let scoreText;
 let isAnimating = false;
 
-function preload() {
-  // Load both Open and Closed states for all 7 Lumens directly from the main folder
-  LUMEN_DATA.forEach(lumen => {
-    this.load.image(`${lumen.name}_open`, `${lumen.name}_open.png`);
-    this.load.image(`${lumen.name}_closed`, `${lumen.name}_closed.png`);
-  });
-}
-
 function create() {
   const scene = this;
+
+  generateAllDirectTextures(scene);
 
   scoreText = scene.add.text(330, 120, 'SCORE: 0', {
     fontSize: '36px',
@@ -63,14 +56,16 @@ function create() {
     color: '#94A3B8'
   }).setOrigin(0.5);
 
+  // Draw board background cells/grid frame
+  drawBoardGrid(scene);
+
   lineLayer = scene.add.graphics();
   lineLayer.setDepth(10);
 
   spawnGrid(scene);
 
-  // Global Blinking System: Triggers a "peek" every 1.5 seconds
   scene.time.addEvent({
-    delay: 1500,
+    delay: 1600,
     loop: true,
     callback: () => triggerRandomPeek(scene)
   });
@@ -79,23 +74,175 @@ function create() {
   scene.input.on('pointermove', (pointer) => handlePointerMove(scene, pointer));
 }
 
+// Draws subtle dark rounded tile pockets behind each piece
+function drawBoardGrid(scene) {
+  const bgGraphics = scene.add.graphics();
+  bgGraphics.setDepth(0);
+
+  // Outer Board Shadow / Panel
+  const boardW = GRID_COLS * TILE_SIZE + 24;
+  const boardH = GRID_ROWS * TILE_SIZE + 24;
+  const boardX = BOARD_OFFSET_X - 12;
+  const boardY = BOARD_OFFSET_Y - 12;
+
+  bgGraphics.fillStyle(0x0E1424, 0.85);
+  bgGraphics.fillRoundedRect(boardX, boardY, boardW, boardH, 24);
+  bgGraphics.lineStyle(2, 0x1E293B, 0.9);
+  bgGraphics.strokeRoundedRect(boardX, boardY, boardW, boardH, 24);
+
+  // Individual Cell Slots
+  for (let r = 0; r < GRID_ROWS; r++) {
+    for (let c = 0; c < GRID_COLS; c++) {
+      const cellX = BOARD_OFFSET_X + c * TILE_SIZE + 6;
+      const cellY = BOARD_OFFSET_Y + r * TILE_SIZE + 6;
+      const cellSize = TILE_SIZE - 12;
+
+      bgGraphics.fillStyle(0x131D31, 0.7);
+      bgGraphics.fillRoundedRect(cellX, cellY, cellSize, cellSize, 16);
+
+      bgGraphics.lineStyle(1.5, 0x1E293B, 0.45);
+      bgGraphics.strokeRoundedRect(cellX, cellY, cellSize, cellSize, 16);
+    }
+  }
+}
+
+// Directly draw textures scaled down to ~26-28px so they sit cleanly in their tile
+function generateAllDirectTextures(scene) {
+  LUMEN_CONFIGS.forEach(cfg => {
+    drawSingleDirectTexture(scene, cfg, false); // closed eyes
+    drawSingleDirectTexture(scene, cfg, true);  // open eyes
+  });
+}
+
+function drawSingleDirectTexture(scene, cfg, isOpen) {
+  const g = scene.make.graphics({ x: 0, y: 0, add: false });
+  const cx = 45;
+  const cy = 45;
+
+  g.fillStyle(cfg.light, 1);
+  g.lineStyle(2.5, 0xFFFFFF, 0.95);
+
+  if (cfg.shape === 'diamond') {
+    g.beginPath();
+    g.moveTo(cx, cy - 28);
+    g.lineTo(cx + 26, cy);
+    g.lineTo(cx, cy + 28);
+    g.lineTo(cx - 26, cy);
+    g.closePath();
+    g.fillPath();
+    g.strokePath();
+  } else if (cfg.shape === 'droplet') {
+    g.beginPath();
+    g.moveTo(cx, cy - 30);
+    g.lineTo(cx + 25, cy + 8);
+    g.arc(cx, cy + 8, 25, 0, Math.PI, false);
+    g.lineTo(cx, cy - 30);
+    g.closePath();
+    g.fillPath();
+    g.strokePath();
+  } else if (cfg.shape === 'star') {
+    g.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = (Math.PI / 4) * i - Math.PI / 2;
+      const r = i % 2 === 0 ? 28 : 11;
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r;
+      if (i === 0) g.moveTo(x, y);
+      else g.lineTo(x, y);
+    }
+    g.closePath();
+    g.fillPath();
+    g.strokePath();
+  } else if (cfg.shape === 'round') {
+    g.fillCircle(cx, cy, 25);
+    g.strokeCircle(cx, cy, 25);
+  } else if (cfg.shape === 'flame') {
+    g.beginPath();
+    g.moveTo(cx, cy - 30);
+    g.lineTo(cx + 25, cy - 8);
+    g.lineTo(cx + 22, cy + 24);
+    g.lineTo(cx - 22, cy + 24);
+    g.lineTo(cx - 25, cy - 8);
+    g.closePath();
+    g.fillPath();
+    g.strokePath();
+  } else if (cfg.shape === 'hexagon') {
+    g.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI / 3) * i - Math.PI / 2;
+      const x = cx + Math.cos(a) * 26;
+      const y = cy + Math.sin(a) * 26;
+      if (i === 0) g.moveTo(x, y);
+      else g.lineTo(x, y);
+    }
+    g.closePath();
+    g.fillPath();
+    g.strokePath();
+  } else if (cfg.shape === 'heart') {
+    g.fillCircle(cx - 11, cy - 9, 13);
+    g.fillCircle(cx + 11, cy - 9, 13);
+    g.fillTriangle(cx - 23, cy - 4, cx + 23, cy - 4, cx, cy + 26);
+    g.strokeCircle(cx - 11, cy - 9, 13);
+    g.strokeCircle(cx + 11, cy - 9, 13);
+  }
+
+  // Gloss Highlight
+  g.fillStyle(0xFFFFFF, 0.45);
+  g.fillEllipse(cx, cy - 13, 14, 6);
+
+  // Rosy Cheeks
+  g.fillStyle(0xFB7185, 0.75);
+  g.fillEllipse(cx - 13, cy + cfg.faceY + 4, 4.5, 2.5);
+  g.fillEllipse(cx + 13, cy + cfg.faceY + 4, 4.5, 2.5);
+
+  // Eyes & Facial Expressions
+  const faceY = cy + cfg.faceY;
+  if (!isOpen) {
+    g.lineStyle(2.5, 0x1E1B4B, 1);
+    g.beginPath();
+    g.moveTo(cx - 14, faceY - 2); g.lineTo(cx - 6, faceY - 2);
+    g.moveTo(cx + 6, faceY - 2);  g.lineTo(cx + 14, faceY - 2);
+    g.strokePath();
+
+    g.beginPath();
+    g.arc(cx, faceY + 3, 3, 0.2, Math.PI - 0.2, false);
+    g.strokePath();
+  } else {
+    g.fillStyle(0x1E1B4B, 1);
+    g.fillCircle(cx - 10, faceY - 2, 5.5);
+    g.fillCircle(cx + 10, faceY - 2, 5.5);
+
+    g.fillStyle(0xFFFFFF, 1);
+    g.fillCircle(cx - 8, faceY - 3.5, 2);
+    g.fillCircle(cx + 12, faceY - 3.5, 2);
+
+    g.fillStyle(0x1E1B4B, 1);
+    g.fillCircle(cx, faceY + 4, 3);
+    g.fillStyle(0xF43F5E, 1);
+    g.fillCircle(cx, faceY + 5, 1.5);
+  }
+
+  g.generateTexture(`${cfg.name}_${isOpen ? 'open' : 'closed'}`, 90, 90);
+  g.destroy();
+}
+
 function spawnGrid(scene) {
   for (let r = 0; r < GRID_ROWS; r++) {
     board[r] = [];
     for (let c = 0; c < GRID_COLS; c++) {
-      const type = Phaser.Math.Between(0, LUMEN_DATA.length - 1);
-      const lumenData = LUMEN_DATA[type];
+      const type = Phaser.Math.Between(0, LUMEN_CONFIGS.length - 1);
+      const cfg = LUMEN_CONFIGS[type];
       const x = BOARD_OFFSET_X + c * TILE_SIZE + TILE_SIZE / 2;
       const y = BOARD_OFFSET_Y + r * TILE_SIZE + TILE_SIZE / 2;
 
-      // Default state: Closed eyes (sleeping/resting)
-      const sprite = scene.add.image(x, y, `${lumenData.name}_closed`);
+      const sprite = scene.add.image(x, y, `${cfg.name}_closed`);
+      sprite.setDepth(2);
 
       const lumen = {
         sprite: sprite,
         type: type,
-        name: lumenData.name,
-        color: lumenData.color,
+        name: cfg.name,
+        color: cfg.color,
         row: r,
         col: c,
         baseY: y,
@@ -108,7 +255,6 @@ function spawnGrid(scene) {
   }
 }
 
-// Organic float + slight squash/stretch for breathing effect
 function startFloating(scene, lumen) {
   if (lumen.floatTween) lumen.floatTween.stop();
 
@@ -117,9 +263,9 @@ function startFloating(scene, lumen) {
 
   lumen.floatTween = scene.tweens.add({
     targets: lumen.sprite,
-    y: lumen.baseY - 6,
-    scaleX: 1.02,
-    scaleY: 0.98,
+    y: lumen.baseY - 4,
+    scaleX: 1.03,
+    scaleY: 0.97,
     duration: randomDuration,
     delay: randomDelay,
     yoyo: true,
@@ -128,7 +274,6 @@ function startFloating(scene, lumen) {
   });
 }
 
-// Randomly picks a sleeping Lumen to quickly open its eyes, then go back to sleep
 function triggerRandomPeek(scene) {
   if (isAnimating) return;
 
@@ -137,11 +282,9 @@ function triggerRandomPeek(scene) {
   const lumen = board[r][c];
 
   if (lumen && lumen.sprite && !selectedLumens.includes(lumen)) {
-    // Wake up (Peek)
     lumen.sprite.setTexture(`${lumen.name}_open`);
 
-    // Go back to sleep after 200ms
-    scene.time.delayedCall(200, () => {
+    scene.time.delayedCall(220, () => {
       if (lumen && lumen.sprite && !selectedLumens.includes(lumen)) {
         lumen.sprite.setTexture(`${lumen.name}_closed`);
       }
@@ -159,14 +302,12 @@ function handlePointerMove(scene, pointer) {
 
       const dist = Phaser.Math.Distance.Between(pointer.x, pointer.y, lumen.sprite.x, lumen.sprite.y);
 
-      // Touch detection radius
-      if (dist < 40) {
+      if (dist < 36) {
         if (!isDragging) {
           isDragging = true;
           currentType = lumen.type;
           addLumenToChain(scene, lumen);
         } else if (lumen.type === currentType) {
-          // Undo last selection if dragging backward over previous Lumen
           if (selectedLumens.length > 1 && lumen === selectedLumens[selectedLumens.length - 2]) {
             const removed = selectedLumens.pop();
             resetLumenVisual(scene, removed);
@@ -190,8 +331,6 @@ function addLumenToChain(scene, lumen) {
   selectedLumens.push(lumen);
 
   if (lumen.floatTween) lumen.floatTween.pause();
-  
-  // Wake up when touched!
   lumen.sprite.setTexture(`${lumen.name}_open`);
 
   scene.tweens.add({
@@ -206,9 +345,8 @@ function addLumenToChain(scene, lumen) {
 }
 
 function resetLumenVisual(scene, lumen) {
-  // Go back to sleep if un-selected
   lumen.sprite.setTexture(`${lumen.name}_closed`);
-  
+
   scene.tweens.add({
     targets: lumen.sprite,
     scaleX: 1.0,
@@ -225,8 +363,7 @@ function drawLine() {
   lineLayer.clear();
   if (selectedLumens.length < 2) return;
 
-  // Match line color to the specific Lumen being dragged
-  const activeColor = LUMEN_DATA[currentType].color;
+  const activeColor = LUMEN_CONFIGS[currentType].color;
   lineLayer.lineStyle(8, activeColor, 0.95);
   lineLayer.beginPath();
   lineLayer.moveTo(selectedLumens[0].sprite.x, selectedLumens[0].sprite.y);
@@ -250,7 +387,6 @@ function endConnection(scene) {
     selectedLumens.forEach(lumen => {
       if (lumen.floatTween) lumen.floatTween.stop();
 
-      // Fun little popping animation
       scene.tweens.add({
         targets: lumen.sprite,
         scale: 0,
@@ -262,10 +398,8 @@ function endConnection(scene) {
       board[lumen.row][lumen.col] = null;
     });
 
-    // Wait for pop to finish, then drop gravity
     scene.time.delayedCall(180, () => applyGravity(scene));
   } else {
-    // If not a valid match, put them all back to sleep
     selectedLumens.forEach(lumen => resetLumenVisual(scene, lumen));
   }
 
@@ -276,11 +410,9 @@ function endConnection(scene) {
 function applyGravity(scene) {
   let longestAnimation = 0;
 
-  // Process column by column
   for (let c = 0; c < GRID_COLS; c++) {
     let emptySlots = 0;
 
-    // Pull pieces down
     for (let r = GRID_ROWS - 1; r >= 0; r--) {
       if (board[r][c] === null) {
         emptySlots++;
@@ -310,24 +442,23 @@ function applyGravity(scene) {
       }
     }
 
-    // Spawn new pieces at the top
     for (let i = 0; i < emptySlots; i++) {
       let r = emptySlots - 1 - i;
-      let type = Phaser.Math.Between(0, LUMEN_DATA.length - 1);
-      let lumenData = LUMEN_DATA[type];
+      let type = Phaser.Math.Between(0, LUMEN_CONFIGS.length - 1);
+      let cfg = LUMEN_CONFIGS[type];
 
       let targetX = BOARD_OFFSET_X + c * TILE_SIZE + TILE_SIZE / 2;
       let targetY = BOARD_OFFSET_Y + r * TILE_SIZE + TILE_SIZE / 2;
       let startY = BOARD_OFFSET_Y - (i + 2) * TILE_SIZE;
 
-      // New pieces fall in asleep
-      let sprite = scene.add.image(targetX, startY, `${lumenData.name}_closed`);
+      let sprite = scene.add.image(targetX, startY, `${cfg.name}_closed`);
+      sprite.setDepth(2);
 
       const lumen = {
         sprite: sprite,
         type: type,
-        name: lumenData.name,
-        color: lumenData.color,
+        name: cfg.name,
+        color: cfg.color,
         row: r,
         col: c,
         baseY: targetY,
@@ -349,7 +480,6 @@ function applyGravity(scene) {
     }
   }
 
-  // Re-enable dragging once all pieces settle
   scene.time.delayedCall(longestAnimation + 50, () => {
     isAnimating = false;
   });
