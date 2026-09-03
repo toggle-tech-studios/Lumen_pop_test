@@ -4,15 +4,15 @@ const TILE_SIZE = 85;
 const BOARD_OFFSET_X = 75;
 const BOARD_OFFSET_Y = 320;
 
-// Complete data for the 7 Living Lumens
+// All 7 Lumens with their corresponding line colors
 const LUMEN_DATA = [
-  { id: 0, name: 'aether',  base: '#0284c7', light: '#38bdf8', glow: '#7dd3fc', type: 'diamond', faceY: 5,  color: 0x38bdf8 },
-  { id: 1, name: 'verdant', base: '#059669', light: '#34d399', glow: '#6ee7b7', type: 'droplet', faceY: 10, color: 0x34d399 },
-  { id: 2, name: 'solar',   base: '#d97706', light: '#fbbf24', glow: '#fde68a', type: 'star',    faceY: 3,  color: 0xfbbf24 },
-  { id: 3, name: 'cosmic',  base: '#7c3aed', light: '#c084fc', glow: '#e9d5ff', type: 'round',   faceY: 0,  color: 0xc084fc },
-  { id: 4, name: 'blaze',   base: '#be123c', light: '#f43f5e', glow: '#fda4af', type: 'flame',   faceY: 12, color: 0xf43f5e },
-  { id: 5, name: 'terra',   base: '#c2410c', light: '#f97316', glow: '#fdba74', type: 'hexagon', faceY: 0,  color: 0xf97316 },
-  { id: 6, name: 'nova',    base: '#be185d', light: '#f472b6', glow: '#fbcfe8', type: 'heart',   faceY: -5, color: 0xf472b6 }
+  { name: 'aether', color: 0x38bdf8 },  // Cyan
+  { name: 'verdant', color: 0x34d399 }, // Green
+  { name: 'solar', color: 0xfbbf24 },   // Gold
+  { name: 'cosmic', color: 0xc084fc },  // Purple
+  { name: 'blaze', color: 0xf43f5e },   // Red
+  { name: 'terra', color: 0xf97316 },   // Orange
+  { name: 'nova', color: 0xf472b6 }     // Pink
 ];
 
 const config = {
@@ -25,6 +25,7 @@ const config = {
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
   scene: {
+    preload: preload,
     create: create
   }
 };
@@ -40,11 +41,16 @@ let score = 0;
 let scoreText;
 let isAnimating = false;
 
+function preload() {
+  // Load both Open and Closed states for all 7 Lumens directly from the main folder
+  LUMEN_DATA.forEach(lumen => {
+    this.load.image(`${lumen.name}_open`, `${lumen.name}_open.png`);
+    this.load.image(`${lumen.name}_closed`, `${lumen.name}_closed.png`);
+  });
+}
+
 function create() {
   const scene = this;
-
-  // 1. Procedurally generate all textures before anything else
-  generateAllTextures(scene);
 
   scoreText = scene.add.text(330, 120, 'SCORE: 0', {
     fontSize: '36px',
@@ -73,182 +79,6 @@ function create() {
   scene.input.on('pointermove', (pointer) => handlePointerMove(scene, pointer));
 }
 
-// --- PROCEDURAL TEXTURE GENERATION ---
-function generateAllTextures(scene) {
-  LUMEN_DATA.forEach(cfg => {
-    createCanvasTexture(scene, cfg, false); // Closed state
-    createCanvasTexture(scene, cfg, true);  // Open state
-  });
-}
-
-function createCanvasTexture(scene, cfg, isOpen) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 128;
-  const ctx = canvas.getContext('2d');
-  
-  const cx = 64;
-  const cy = 64;
-
-  ctx.save();
-  ctx.clearRect(0, 0, 128, 128); 
-  ctx.translate(cx, cy);
-
-  ctx.shadowColor = cfg.glow;
-  ctx.shadowBlur = 5;
-
-  ctx.beginPath();
-  if (cfg.type === 'diamond') {
-    ctx.moveTo(0, -50);
-    ctx.bezierCurveTo(46, -20, 48, 14, 0, 44);
-    ctx.bezierCurveTo(-48, 14, -46, -20, 0, -50);
-  } else if (cfg.type === 'droplet') {
-    ctx.moveTo(0, -52);
-    ctx.bezierCurveTo(46, -15, 48, 40, 0, 40);
-    ctx.bezierCurveTo(-48, 40, -46, -15, 0, -52);
-  } else if (cfg.type === 'star') {
-    ctx.moveTo(0, -48);
-    ctx.quadraticCurveTo(12, -12, 48, 0);
-    ctx.quadraticCurveTo(12, 12, 0, 48);
-    ctx.quadraticCurveTo(-12, 12, -48, 0);
-    ctx.quadraticCurveTo(-12, -12, 0, -48);
-  } else if (cfg.type === 'round') {
-    ctx.arc(0, 0, 42, 0, Math.PI * 2);
-  } else if (cfg.type === 'flame') {
-    ctx.moveTo(0, -50);
-    ctx.bezierCurveTo(24, -30, 46, -15, 42, 22);
-    ctx.bezierCurveTo(36, 44, -36, 44, -42, 22);
-    ctx.bezierCurveTo(-46, -15, -24, -30, 0, -50);
-  } else if (cfg.type === 'hexagon') {
-    for (let i = 0; i < 6; i++) {
-      const angle = (Math.PI / 3) * i - Math.PI / 2;
-      const x = Math.cos(angle) * 44;
-      const y = Math.sin(angle) * 44;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-  } else if (cfg.type === 'heart') {
-    ctx.moveTo(0, 20);
-    ctx.bezierCurveTo(-50, -20, -35, -55, 0, -30);
-    ctx.bezierCurveTo(35, -55, 50, -20, 0, 20);
-  }
-  ctx.closePath();
-
-  const grad = ctx.createLinearGradient(0, -45, 0, 45);
-  grad.addColorStop(0, cfg.light);
-  grad.addColorStop(1, cfg.base);
-  ctx.fillStyle = grad;
-  ctx.fill();
-
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 3.5;
-  ctx.stroke();
-
-  ctx.shadowBlur = 0;
-  ctx.save();
-  ctx.clip(); 
-
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-  ctx.beginPath();
-  ctx.ellipse(0, -25, 26, 12, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.translate(0, cfg.faceY);
-
-  ctx.fillStyle = 'rgba(255, 110, 140, 0.65)';
-  ctx.beginPath();
-  ctx.ellipse(-22, 10, 7, 4, 0, 0, Math.PI * 2);
-  ctx.ellipse(22, 10, 7, 4, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = '#1e1b4b';
-  ctx.strokeStyle = '#1e1b4b';
-  ctx.lineWidth = 3.5;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-
-  if (!isOpen) {
-    ctx.beginPath();
-    if (cfg.name === 'solar' || cfg.name === 'terra') {
-      ctx.moveTo(-22, -2); ctx.lineTo(-10, -2);
-      ctx.moveTo(22, -2); ctx.lineTo(10, -2);
-    } else if (cfg.name === 'cosmic' || cfg.name === 'nova') {
-      ctx.arc(-16, 2, 7, Math.PI * 1.1, Math.PI * 1.9);
-      ctx.moveTo(9, 0); 
-      ctx.arc(16, 2, 7, Math.PI * 1.1, Math.PI * 1.9);
-    } else if (cfg.name === 'blaze') {
-      ctx.moveTo(-22, -6); ctx.lineTo(-12, -1);
-      ctx.moveTo(22, -6); ctx.lineTo(12, -1);
-    } else {
-      ctx.arc(-16, -4, 6, Math.PI * 0.1, Math.PI * 0.9);
-      ctx.moveTo(22, -4);
-      ctx.arc(16, -4, 6, Math.PI * 0.1, Math.PI * 0.9);
-    }
-    ctx.stroke();
-  } else {
-    [-16, 16].forEach(x => {
-      ctx.fillStyle = '#1e1b4b';
-      ctx.beginPath();
-      ctx.arc(x, -2, 8.5, 0, Math.PI * 2);
-      ctx.fill();
-      
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(x + 2, -4.5, 3.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(x - 3, 2, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    if (cfg.name === 'blaze') {
-      ctx.beginPath();
-      ctx.moveTo(-22, -14); ctx.lineTo(-12, -11);
-      ctx.moveTo(22, -14); ctx.lineTo(12, -11);
-      ctx.stroke();
-    }
-  }
-
-  ctx.fillStyle = '#1e1b4b';
-  ctx.beginPath();
-  
-  if (!isOpen) {
-    if (cfg.name === 'blaze' || cfg.name === 'solar') {
-       ctx.moveTo(-3, 8); ctx.lineTo(3, 8);
-       ctx.stroke();
-    } else {
-       ctx.arc(0, 6, 5, 0.1, Math.PI * 0.9);
-       ctx.stroke();
-    }
-  } else {
-    if (cfg.name === 'verdant' || cfg.name === 'nova') {
-      ctx.arc(-4, 7, 4, 0, Math.PI);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(4, 7, 4, 0, Math.PI);
-      ctx.stroke();
-    } else if (cfg.name === 'solar' || cfg.name === 'terra') {
-      ctx.arc(0, 8, 7, 0, Math.PI);
-      ctx.fill();
-      ctx.fillStyle = '#f43f5e';
-      ctx.beginPath();
-      ctx.arc(0, 11, 4, 0, Math.PI);
-      ctx.fill();
-    } else {
-      ctx.arc(0, 8, 5, 0, Math.PI);
-      ctx.fill();
-    }
-  }
-
-  ctx.restore(); 
-  ctx.restore(); 
-
-  // Inject the dynamically drawn canvas directly into Phaser's Texture Manager
-  const textureKey = `${cfg.name}_${isOpen ? 'open' : 'closed'}`;
-  scene.textures.addCanvas(textureKey, canvas);
-}
-// --- END PROCEDURAL TEXTURE GENERATION ---
-
 function spawnGrid(scene) {
   for (let r = 0; r < GRID_ROWS; r++) {
     board[r] = [];
@@ -258,7 +88,7 @@ function spawnGrid(scene) {
       const x = BOARD_OFFSET_X + c * TILE_SIZE + TILE_SIZE / 2;
       const y = BOARD_OFFSET_Y + r * TILE_SIZE + TILE_SIZE / 2;
 
-      // Spawns using the procedurally generated texture
+      // Default state: Closed eyes (sleeping/resting)
       const sprite = scene.add.image(x, y, `${lumenData.name}_closed`);
 
       const lumen = {
@@ -278,6 +108,7 @@ function spawnGrid(scene) {
   }
 }
 
+// Organic float + slight squash/stretch for breathing effect
 function startFloating(scene, lumen) {
   if (lumen.floatTween) lumen.floatTween.stop();
 
@@ -297,6 +128,7 @@ function startFloating(scene, lumen) {
   });
 }
 
+// Randomly picks a sleeping Lumen to quickly open its eyes, then go back to sleep
 function triggerRandomPeek(scene) {
   if (isAnimating) return;
 
@@ -305,8 +137,10 @@ function triggerRandomPeek(scene) {
   const lumen = board[r][c];
 
   if (lumen && lumen.sprite && !selectedLumens.includes(lumen)) {
+    // Wake up (Peek)
     lumen.sprite.setTexture(`${lumen.name}_open`);
 
+    // Go back to sleep after 200ms
     scene.time.delayedCall(200, () => {
       if (lumen && lumen.sprite && !selectedLumens.includes(lumen)) {
         lumen.sprite.setTexture(`${lumen.name}_closed`);
@@ -325,12 +159,14 @@ function handlePointerMove(scene, pointer) {
 
       const dist = Phaser.Math.Distance.Between(pointer.x, pointer.y, lumen.sprite.x, lumen.sprite.y);
 
+      // Touch detection radius
       if (dist < 40) {
         if (!isDragging) {
           isDragging = true;
           currentType = lumen.type;
           addLumenToChain(scene, lumen);
         } else if (lumen.type === currentType) {
+          // Undo last selection if dragging backward over previous Lumen
           if (selectedLumens.length > 1 && lumen === selectedLumens[selectedLumens.length - 2]) {
             const removed = selectedLumens.pop();
             resetLumenVisual(scene, removed);
@@ -355,6 +191,7 @@ function addLumenToChain(scene, lumen) {
 
   if (lumen.floatTween) lumen.floatTween.pause();
   
+  // Wake up when touched!
   lumen.sprite.setTexture(`${lumen.name}_open`);
 
   scene.tweens.add({
@@ -369,6 +206,7 @@ function addLumenToChain(scene, lumen) {
 }
 
 function resetLumenVisual(scene, lumen) {
+  // Go back to sleep if un-selected
   lumen.sprite.setTexture(`${lumen.name}_closed`);
   
   scene.tweens.add({
@@ -387,6 +225,7 @@ function drawLine() {
   lineLayer.clear();
   if (selectedLumens.length < 2) return;
 
+  // Match line color to the specific Lumen being dragged
   const activeColor = LUMEN_DATA[currentType].color;
   lineLayer.lineStyle(8, activeColor, 0.95);
   lineLayer.beginPath();
@@ -411,6 +250,7 @@ function endConnection(scene) {
     selectedLumens.forEach(lumen => {
       if (lumen.floatTween) lumen.floatTween.stop();
 
+      // Fun little popping animation
       scene.tweens.add({
         targets: lumen.sprite,
         scale: 0,
@@ -422,8 +262,10 @@ function endConnection(scene) {
       board[lumen.row][lumen.col] = null;
     });
 
+    // Wait for pop to finish, then drop gravity
     scene.time.delayedCall(180, () => applyGravity(scene));
   } else {
+    // If not a valid match, put them all back to sleep
     selectedLumens.forEach(lumen => resetLumenVisual(scene, lumen));
   }
 
@@ -434,9 +276,11 @@ function endConnection(scene) {
 function applyGravity(scene) {
   let longestAnimation = 0;
 
+  // Process column by column
   for (let c = 0; c < GRID_COLS; c++) {
     let emptySlots = 0;
 
+    // Pull pieces down
     for (let r = GRID_ROWS - 1; r >= 0; r--) {
       if (board[r][c] === null) {
         emptySlots++;
@@ -466,6 +310,7 @@ function applyGravity(scene) {
       }
     }
 
+    // Spawn new pieces at the top
     for (let i = 0; i < emptySlots; i++) {
       let r = emptySlots - 1 - i;
       let type = Phaser.Math.Between(0, LUMEN_DATA.length - 1);
@@ -475,6 +320,7 @@ function applyGravity(scene) {
       let targetY = BOARD_OFFSET_Y + r * TILE_SIZE + TILE_SIZE / 2;
       let startY = BOARD_OFFSET_Y - (i + 2) * TILE_SIZE;
 
+      // New pieces fall in asleep
       let sprite = scene.add.image(targetX, startY, `${lumenData.name}_closed`);
 
       const lumen = {
@@ -503,8 +349,8 @@ function applyGravity(scene) {
     }
   }
 
+  // Re-enable dragging once all pieces settle
   scene.time.delayedCall(longestAnimation + 50, () => {
     isAnimating = false;
   });
-              }
-    
+}
