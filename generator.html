@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Living Lumens (Open/Closed States)</title>
+  <style>
+    body {
+      background: #090d16;
+      color: #fff;
+      font-family: system-ui, -apple-system, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    h2 { margin-bottom: 5px; }
+    p { color: #94a3b8; margin-bottom: 24px; font-size: 14px;}
+    .grid {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+    .lumen-row {
+      background: #141c2e;
+      padding: 20px;
+      border-radius: 16px;
+      border: 1px solid #22324f;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 400px;
+    }
+    .lumen-title {
+      font-weight: bold;
+      font-size: 18px;
+      margin-bottom: 15px;
+      color: #38bdf8;
+    }
+    .states-container {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      width: 100%;
+    }
+    .state-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    canvas {
+      /* This checkered pattern is only for the browser preview so you can see transparency. The downloaded PNG will have no background. */
+      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill-opacity=".06"><rect width="8" height="8"/><rect x="8" y="8" width="8" height="8"/></svg>');
+      border-radius: 12px;
+    }
+    button {
+      background: #38bdf8;
+      color: #031226;
+      border: none;
+      font-weight: 700;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Complete Lumen Set (Idle & Active)</h2>
+  <p>Idle (Closed) for the board. Active (Opened) for when dragged.</p>
+
+  <div class="grid" id="container"></div>
+
+  <script>
+    const LUMENS = [
+      { id: 'aether', name: 'Aether (Cyan)', base: '#0284c7', light: '#38bdf8', glow: '#7dd3fc', type: 'diamond', faceY: 5 },
+      { id: 'verdant', name: 'Verdant (Green)', base: '#059669', light: '#34d399', glow: '#6ee7b7', type: 'droplet', faceY: 10 },
+      { id: 'solar', name: 'Solar (Gold)', base: '#d97706', light: '#fbbf24', glow: '#fde68a', type: 'star', faceY: 3 },
+      { id: 'cosmic', name: 'Cosmic (Purple)', base: '#7c3aed', light: '#c084fc', glow: '#e9d5ff', type: 'round', faceY: 0 },
+      { id: 'blaze', name: 'Blaze (Red)', base: '#be123c', light: '#f43f5e', glow: '#fda4af', type: 'flame', faceY: 12 },
+      // Added 2 new distinct shapes
+      { id: 'terra', name: 'Terra (Orange)', base: '#c2410c', light: '#f97316', glow: '#fdba74', type: 'hexagon', faceY: 0 },
+      { id: 'nova', name: 'Nova (Pink)', base: '#be185d', light: '#f472b6', glow: '#fbcfe8', type: 'heart', faceY: -5 }
+    ];
+
+    const container = document.getElementById('container');
+
+    LUMENS.forEach(cfg => {
+      const row = document.createElement('div');
+      row.className = 'lumen-row';
+
+      const title = document.createElement('div');
+      title.className = 'lumen-title';
+      title.innerText = cfg.name;
+      row.appendChild(title);
+
+      const statesContainer = document.createElement('div');
+      statesContainer.className = 'states-container';
+
+      // Generate Closed (Idle) State
+      statesContainer.appendChild(createStateColumn(cfg, false, 'Idle (Closed)'));
+      
+      // Generate Opened (Active) State
+      statesContainer.appendChild(createStateColumn(cfg, true, 'Active (Opened)'));
+
+      row.appendChild(statesContainer);
+      container.appendChild(row);
+    });
+
+    function createStateColumn(cfg, isOpen, labelText) {
+      const col = document.createElement('div');
+      col.className = 'state-col';
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+
+      drawLivingLumen(ctx, cfg, isOpen);
+
+      const label = document.createElement('span');
+      label.innerText = labelText;
+      label.style.fontSize = '12px';
+      label.style.color = '#cbd5e1';
+
+      const btn = document.createElement('button');
+      btn.innerText = 'Download PNG';
+      btn.onclick = () => {
+        const a = document.createElement('a');
+        a.download = `${cfg.id}_${isOpen ? 'open' : 'closed'}.png`;
+        a.href = canvas.toDataURL('image/png');
+        a.click();
+      };
+
+      col.appendChild(label);
+      col.appendChild(canvas);
+      col.appendChild(btn);
+      return col;
+    }
+
+    function drawLivingLumen(ctx, cfg, isOpen) {
+      const cx = 64;
+      const cy = 64;
+
+      ctx.save();
+      // Ensure completely transparent background
+      ctx.clearRect(0, 0, 128, 128); 
+      ctx.translate(cx, cy);
+
+      // Outer Magic Glow (Reduced)
+      ctx.shadowColor = cfg.glow;
+      ctx.shadowBlur = 5;
+
+      // 1. Draw Unique Body Silhouette
+      ctx.beginPath();
+      if (cfg.type === 'diamond') {
+        ctx.moveTo(0, -50);
+        ctx.bezierCurveTo(46, -20, 48, 14, 0, 44);
+        ctx.bezierCurveTo(-48, 14, -46, -20, 0, -50);
+      } else if (cfg.type === 'droplet') {
+        ctx.moveTo(0, -52);
+        ctx.bezierCurveTo(46, -15, 48, 40, 0, 40);
+        ctx.bezierCurveTo(-48, 40, -46, -15, 0, -52);
+      } else if (cfg.type === 'star') {
+        ctx.moveTo(0, -48);
+        ctx.quadraticCurveTo(12, -12, 48, 0);
+        ctx.quadraticCurveTo(12, 12, 0, 48);
+        ctx.quadraticCurveTo(-12, 12, -48, 0);
+        ctx.quadraticCurveTo(-12, -12, 0, -48);
+      } else if (cfg.type === 'round') {
+        ctx.arc(0, 0, 42, 0, Math.PI * 2);
+      } else if (cfg.type === 'flame') {
+        ctx.moveTo(0, -50);
+        ctx.bezierCurveTo(24, -30, 46, -15, 42, 22);
+        ctx.bezierCurveTo(36, 44, -36, 44, -42, 22);
+        ctx.bezierCurveTo(-46, -15, -24, -30, 0, -50);
+      } else if (cfg.type === 'hexagon') {
+        for (let i = 0; i < 6; i++) {
+          const angle = (Math.PI / 3) * i - Math.PI / 2;
+          const x = Math.cos(angle) * 44;
+          const y = Math.sin(angle) * 44;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+      } else if (cfg.type === 'heart') {
+        ctx.moveTo(0, 20);
+        ctx.bezierCurveTo(-50, -20, -35, -55, 0, -30);
+        ctx.bezierCurveTo(35, -55, 50, -20, 0, 20);
+      }
+      ctx.closePath();
+
+      // Body Gradient Fill
+      const grad = ctx.createLinearGradient(0, -45, 0, 45);
+      grad.addColorStop(0, cfg.light);
+      grad.addColorStop(1, cfg.base);
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // White outline rim
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3.5;
+      ctx.stroke();
+
+      // REMOVE SHADOW before clipping to prevent weird internal glow lines
+      ctx.shadowBlur = 0;
+
+      // CRITICAL: Clip to Shape Bounds!
+      // Anything drawn after this point will be contained inside the Lumen body.
+      ctx.save();
+      ctx.clip(); 
+
+      // 2. Head Highlight (Gloss)
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.beginPath();
+      ctx.ellipse(0, -25, 26, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Shift face elements based on shape center
+      ctx.translate(0, cfg.faceY);
+
+      // 3. Cheeks
+      ctx.fillStyle = 'rgba(255, 110, 140, 0.65)';
+      ctx.beginPath();
+      ctx.ellipse(-22, 10, 7, 4, 0, 0, Math.PI * 2);
+      ctx.ellipse(22, 10, 7, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 4. Face Drawing Variables
+      ctx.fillStyle = '#1e1b4b';
+      ctx.strokeStyle = '#1e1b4b';
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // EYES
+      if (!isOpen) {
+        // --- CLOSED EYES (IDLE) ---
+        ctx.beginPath();
+        if (cfg.id === 'solar' || cfg.id === 'terra') {
+          // Content sleeping lines (- -)
+          ctx.moveTo(-22, -2); ctx.lineTo(-10, -2);
+          ctx.moveTo(22, -2); ctx.lineTo(10, -2);
+        } else if (cfg.id === 'cosmic' || cfg.id === 'nova') {
+          // Happy sleepy arcs (^ ^)
+          ctx.arc(-16, 2, 7, Math.PI * 1.1, Math.PI * 1.9);
+          ctx.moveTo(9, 0); // Reset path
+          ctx.arc(16, 2, 7, Math.PI * 1.1, Math.PI * 1.9);
+        } else if (cfg.id === 'blaze') {
+          // Determined sleep (\ /)
+          ctx.moveTo(-22, -6); ctx.lineTo(-12, -1);
+          ctx.moveTo(22, -6); ctx.lineTo(12, -1);
+        } else {
+          // Soft sleep curves (u u)
+          ctx.arc(-16, -4, 6, Math.PI * 0.1, Math.PI * 0.9);
+          ctx.moveTo(22, -4);
+          ctx.arc(16, -4, 6, Math.PI * 0.1, Math.PI * 0.9);
+        }
+        ctx.stroke();
+      } else {
+        // --- OPEN EYES (ACTIVE) ---
+        [-16, 16].forEach(x => {
+          ctx.fillStyle = '#1e1b4b';
+          ctx.beginPath();
+          ctx.arc(x, -2, 8.5, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // White catchlights for cute gloss
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(x + 2, -4.5, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(x - 3, 2, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Add tiny angry eyebrows specifically for the Blaze (Red) Lumen
+        if (cfg.id === 'blaze') {
+          ctx.beginPath();
+          ctx.moveTo(-22, -14); ctx.lineTo(-12, -11);
+          ctx.moveTo(22, -14); ctx.lineTo(12, -11);
+          ctx.stroke();
+        }
+      }
+
+      // MOUTH
+      ctx.fillStyle = '#1e1b4b';
+      ctx.beginPath();
+      
+      if (!isOpen) {
+        // Idle mouths
+        if (cfg.id === 'blaze' || cfg.id === 'solar') {
+           // Neutral line
+           ctx.moveTo(-3, 8); ctx.lineTo(3, 8);
+           ctx.stroke();
+        } else {
+           // Tiny smile
+           ctx.arc(0, 6, 5, 0.1, Math.PI * 0.9);
+           ctx.stroke();
+        }
+      } else {
+        // Active mouths
+        if (cfg.id === 'verdant' || cfg.id === 'nova') {
+          // Cute cat mouth (:3)
+          ctx.arc(-4, 7, 4, 0, Math.PI);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(4, 7, 4, 0, Math.PI);
+          ctx.stroke();
+        } else if (cfg.id === 'solar' || cfg.id === 'terra') {
+          // Open happy mouth
+          ctx.arc(0, 8, 7, 0, Math.PI);
+          ctx.fill();
+          ctx.fillStyle = '#f43f5e';
+          ctx.beginPath();
+          ctx.arc(0, 11, 4, 0, Math.PI);
+          ctx.fill();
+        } else {
+          // Open small gasp/smile
+          ctx.arc(0, 8, 5, 0, Math.PI);
+          ctx.fill();
+        }
+      }
+
+      ctx.restore(); // Ends the clip bounds constraint
+      ctx.restore(); // Ends the main translation
+    }
+  </script>
+</body>
+</html>
