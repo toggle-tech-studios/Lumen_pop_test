@@ -6,13 +6,13 @@ const BOARD_OFFSET_Y = 320;
 
 // All 7 Original Lumens
 const LUMEN_CONFIGS = [
-  { name: 'aether',  base: 0x0284c7, light: 0x38bdf8, shape: 'diamond', faceY: 2,  color: 0x38bdf8 },
-  { name: 'verdant', base: 0x059669, light: 0x34d399, shape: 'droplet', faceY: 4,  color: 0x34d399 },
-  { name: 'solar',   base: 0xd97706, light: 0xfbbf24, shape: 'star',    faceY: 1,  color: 0xfbbf24 },
-  { name: 'cosmic',  base: 0x7c3aed, light: 0xc084fc, shape: 'round',   faceY: 0,  color: 0xc084fc },
-  { name: 'blaze',   base: 0xbe123c, light: 0xf43f5e, shape: 'flame',   faceY: 5,  color: 0xf43f5e },
-  { name: 'terra',   base: 0xc2410c, light: 0xf97316, shape: 'hexagon', faceY: 0,  color: 0xf97316 },
-  { name: 'nova',    base: 0xbe185d, light: 0xf472b6, shape: 'heart',   faceY: -2, color: 0xf472b6 }
+  { name: 'aether',  base: '#0284c7', light: '#38bdf8', glow: '#7dd3fc', shape: 'diamond', faceY: 2,  color: 0x38bdf8 },
+  { name: 'verdant', base: '#059669', light: '#34d399', glow: '#6ee7b7', shape: 'droplet', faceY: 5,  color: 0x34d399 },
+  { name: 'solar',   base: '#d97706', light: '#fbbf24', glow: '#fde68a', shape: 'star',    faceY: 2,  color: 0xfbbf24 },
+  { name: 'cosmic',  base: '#7c3aed', light: '#c084fc', glow: '#e9d5ff', shape: 'round',   faceY: 0,  color: 0xc084fc },
+  { name: 'blaze',   base: '#be123c', light: '#f43f5e', glow: '#fda4af', shape: 'flame',   faceY: 7,  color: 0xf43f5e },
+  { name: 'terra',   base: '#c2410c', light: '#f97316', glow: '#fdba74', shape: 'hexagon', faceY: 0,  color: 0xf97316 },
+  { name: 'nova',    base: '#be185d', light: '#f472b6', glow: '#fbcfe8', shape: 'heart',   faceY: -3, color: 0xf472b6 }
 ];
 
 const config = {
@@ -48,7 +48,13 @@ let isAnimating = false;
 function create() {
   const scene = this;
 
-  generateAllDirectTextures(scene);
+  // 1. Draw Magical Background
+  createBackground(scene);
+
+  // 2. Generate perfect Lumen textures in memory
+  generateAllCanvasTextures(scene);
+
+  // 3. Build UI & Board
   buildUserInterface(scene);
   drawBoardGrid(scene);
 
@@ -57,6 +63,7 @@ function create() {
 
   spawnGrid(scene);
 
+  // Global Blinking System
   scene.time.addEvent({
     delay: 1600,
     loop: true,
@@ -67,67 +74,255 @@ function create() {
   scene.input.on('pointermove', (pointer) => handlePointerMove(scene, pointer));
 }
 
-// Builds the complete Header, Progress Tracker, and Bottom Utility Dock
+// --- NEW MAGICAL BACKGROUND ---
+function createBackground(scene) {
+  const bg = scene.add.graphics();
+  bg.setDepth(-10);
+
+  // Cosmic Gradient (Dark Blue to Deep Purple)
+  bg.fillGradientStyle(0x050811, 0x050811, 0x1A1433, 0x0B122A, 1);
+  bg.fillRect(0, 0, 660, 1060);
+
+  // Floating Energy Particles
+  for (let i = 0; i < 40; i++) {
+    const startX = Phaser.Math.Between(0, 660);
+    const startY = Phaser.Math.Between(0, 1060);
+    const radius = Phaser.Math.FloatBetween(1.5, 3.5);
+    const alpha = Phaser.Math.FloatBetween(0.1, 0.4);
+
+    const particle = scene.add.circle(startX, startY, radius, 0x38BDF8, alpha);
+    particle.setDepth(-9);
+
+    scene.tweens.add({
+      targets: particle,
+      y: startY - Phaser.Math.Between(150, 400),
+      x: startX + Phaser.Math.Between(-30, 30),
+      alpha: 0,
+      duration: Phaser.Math.Between(5000, 10000),
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+      delay: Phaser.Math.Between(0, 5000)
+    });
+  }
+}
+
+// --- FLAWLESS CANVAS TEXTURE GENERATOR ---
+function generateAllCanvasTextures(scene) {
+  LUMEN_CONFIGS.forEach(cfg => {
+    createCanvasTexture(scene, cfg, false);
+    createCanvasTexture(scene, cfg, true);
+  });
+}
+
+function createCanvasTexture(scene, cfg, isOpen) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 90;
+  canvas.height = 90;
+  const ctx = canvas.getContext('2d');
+  
+  const cx = 45;
+  const cy = 45;
+
+  ctx.save();
+  ctx.clearRect(0, 0, 90, 90); 
+  ctx.translate(cx, cy);
+
+  ctx.shadowColor = cfg.glow;
+  ctx.shadowBlur = 4;
+
+  ctx.beginPath();
+  if (cfg.shape === 'diamond') {
+    ctx.moveTo(0, -32);
+    ctx.bezierCurveTo(30, -14, 32, 10, 0, 30);
+    ctx.bezierCurveTo(-32, 10, -30, -14, 0, -32);
+  } else if (cfg.shape === 'droplet') {
+    ctx.moveTo(0, -34);
+    ctx.bezierCurveTo(30, -10, 32, 26, 0, 26);
+    ctx.bezierCurveTo(-32, 26, -30, -10, 0, -34);
+  } else if (cfg.shape === 'star') {
+    ctx.moveTo(0, -32);
+    ctx.quadraticCurveTo(8, -8, 32, 0);
+    ctx.quadraticCurveTo(8, 8, 0, 32);
+    ctx.quadraticCurveTo(-8, 8, -32, 0);
+    ctx.quadraticCurveTo(-8, -8, 0, -32);
+  } else if (cfg.shape === 'round') {
+    ctx.arc(0, 0, 26, 0, Math.PI * 2);
+  } else if (cfg.shape === 'flame') {
+    ctx.moveTo(0, -32);
+    ctx.bezierCurveTo(16, -20, 30, -10, 28, 14);
+    ctx.bezierCurveTo(24, 28, -24, 28, -28, 14);
+    ctx.bezierCurveTo(-30, -10, -16, -20, 0, -32);
+  } else if (cfg.shape === 'hexagon') {
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i - Math.PI / 2;
+      const x = Math.cos(angle) * 28;
+      const y = Math.sin(angle) * 28;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+  } else if (cfg.shape === 'heart') {
+    ctx.moveTo(0, 14);
+    ctx.bezierCurveTo(-34, -14, -24, -38, 0, -20);
+    ctx.bezierCurveTo(24, -38, 34, -14, 0, 14);
+  }
+  ctx.closePath();
+
+  const grad = ctx.createLinearGradient(0, -30, 0, 30);
+  grad.addColorStop(0, cfg.light);
+  grad.addColorStop(1, cfg.base);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+  ctx.save();
+  ctx.clip(); // PERFECT CLIPPING FOR EYES & CHEEKS
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.beginPath();
+  ctx.ellipse(0, -16, 16, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.translate(0, cfg.faceY);
+
+  ctx.fillStyle = 'rgba(255, 110, 140, 0.65)';
+  ctx.beginPath();
+  ctx.ellipse(-14, 6, 4.5, 2.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(14, 6, 4.5, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#1e1b4b';
+  ctx.strokeStyle = '#1e1b4b';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  if (!isOpen) {
+    ctx.beginPath();
+    if (cfg.name === 'solar' || cfg.name === 'terra') {
+      ctx.moveTo(-14, -1); ctx.lineTo(-6, -1);
+      ctx.moveTo(14, -1); ctx.lineTo(6, -1);
+    } else if (cfg.name === 'cosmic' || cfg.name === 'nova') {
+      ctx.arc(-10, 1, 4.5, Math.PI * 1.1, Math.PI * 1.9);
+      ctx.moveTo(6, 0); 
+      ctx.arc(10, 1, 4.5, Math.PI * 1.1, Math.PI * 1.9);
+    } else if (cfg.name === 'blaze') {
+      ctx.moveTo(-14, -4); ctx.lineTo(-8, -1);
+      ctx.moveTo(14, -4); ctx.lineTo(8, -1);
+    } else {
+      ctx.arc(-10, -2, 4, Math.PI * 0.1, Math.PI * 0.9);
+      ctx.moveTo(14, -2);
+      ctx.arc(10, -2, 4, Math.PI * 0.1, Math.PI * 0.9);
+    }
+    ctx.stroke();
+  } else {
+    [-10, 10].forEach(x => {
+      ctx.fillStyle = '#1e1b4b';
+      ctx.beginPath();
+      ctx.arc(x, -1, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x + 1.5, -3, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x - 2, 1, 1, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    if (cfg.name === 'blaze') {
+      ctx.beginPath();
+      ctx.moveTo(-15, -9); ctx.lineTo(-7, -7);
+      ctx.moveTo(15, -9); ctx.lineTo(7, -7);
+      ctx.stroke();
+    }
+  }
+
+  ctx.fillStyle = '#1e1b4b';
+  ctx.beginPath();
+  
+  if (!isOpen) {
+    if (cfg.name === 'blaze' || cfg.name === 'solar') {
+       ctx.moveTo(-2, 5); ctx.lineTo(2, 5);
+       ctx.stroke();
+    } else {
+       ctx.arc(0, 4, 3, 0.1, Math.PI * 0.9);
+       ctx.stroke();
+    }
+  } else {
+    if (cfg.name === 'verdant' || cfg.name === 'nova') {
+      ctx.arc(-2.5, 5, 2.5, 0, Math.PI);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(2.5, 5, 2.5, 0, Math.PI);
+      ctx.stroke();
+    } else if (cfg.name === 'solar' || cfg.name === 'terra') {
+      ctx.arc(0, 5, 4.5, 0, Math.PI);
+      ctx.fill();
+      ctx.fillStyle = '#f43f5e';
+      ctx.beginPath();
+      ctx.arc(0, 7, 2.5, 0, Math.PI);
+      ctx.fill();
+    } else {
+      ctx.arc(0, 5, 3.5, 0, Math.PI);
+      ctx.fill();
+    }
+  }
+
+  ctx.restore(); 
+  ctx.restore(); 
+
+  scene.textures.addCanvas(`${cfg.name}_${isOpen ? 'open' : 'closed'}`, canvas);
+}
+
+
+// --- UI & BOARD SETUP ---
 function buildUserInterface(scene) {
   const ui = scene.add.graphics();
   ui.setDepth(5);
 
-  // 1. Top Glass Header Card
-  ui.fillStyle(0x0C1222, 0.9);
+  ui.fillStyle(0x0C1222, 0.85);
   ui.fillRoundedRect(30, 24, 600, 96, 20);
   ui.lineStyle(2, 0x1E2E4A, 0.9);
   ui.strokeRoundedRect(30, 24, 600, 96, 20);
 
-  // Level Badge (Left)
   ui.fillStyle(0x1B253D, 1);
   ui.fillRoundedRect(44, 36, 110, 72, 14);
   scene.add.text(99, 56, 'LEVEL', { fontSize: '13px', fontStyle: 'bold', color: '#64748B' }).setOrigin(0.5).setDepth(6);
   scene.add.text(99, 82, '1', { fontSize: '26px', fontStyle: 'bold', color: '#38BDF8' }).setOrigin(0.5).setDepth(6);
 
-  // Target Score (Middle)
   scene.add.text(260, 56, 'TARGET', { fontSize: '13px', fontStyle: 'bold', color: '#64748B' }).setOrigin(0.5).setDepth(6);
   scene.add.text(260, 82, `${TARGET_SCORE}`, { fontSize: '22px', fontStyle: 'bold', color: '#F1F5F9' }).setOrigin(0.5).setDepth(6);
 
-  // Moves Left Badge (Right)
   ui.fillStyle(0x1B253D, 1);
   ui.fillRoundedRect(480, 36, 136, 72, 14);
   scene.add.text(548, 56, 'MOVES', { fontSize: '13px', fontStyle: 'bold', color: '#64748B' }).setOrigin(0.5).setDepth(6);
   movesText = scene.add.text(548, 82, `${movesRemaining}`, { fontSize: '26px', fontStyle: 'bold', color: '#F59E0B' }).setOrigin(0.5).setDepth(6);
 
-  // 2. Score & Star Progress Bar Section
-  scoreText = scene.add.text(48, 146, 'SCORE: 0', {
-    fontSize: '20px',
-    fontStyle: 'bold',
-    color: '#E2E8F0'
-  }).setDepth(6);
+  scoreText = scene.add.text(48, 146, 'SCORE: 0', { fontSize: '20px', fontStyle: 'bold', color: '#E2E8F0' }).setDepth(6);
 
-  // Progress Bar Background Track
   ui.fillStyle(0x131D31, 1);
   ui.fillRoundedRect(42, 180, 576, 20, 10);
   ui.lineStyle(1.5, 0x1E293B, 1);
   ui.strokeRoundedRect(42, 180, 576, 20, 10);
 
-  // Dynamic Fill Layer
   progressBar = scene.add.graphics().setDepth(6);
   updateProgressBar(0);
 
-  // 3 Star Milestone Anchors (33%, 66%, 100%)
   const starFractions = [0.33, 0.66, 1.0];
-  starFractions.forEach((pct, idx) => {
+  starFractions.forEach((pct) => {
     const starX = 42 + 576 * pct;
     const starY = 190;
-
     const starBg = scene.add.circle(starX, starY, 14, 0x1B253D).setStrokeStyle(2, 0x334155).setDepth(7);
-    const starGlyph = scene.add.text(starX, starY - 1, '★', {
-      fontSize: '15px',
-      color: '#475569'
-    }).setOrigin(0.5).setDepth(8);
-
+    const starGlyph = scene.add.text(starX, starY - 1, '★', { fontSize: '15px', color: '#475569' }).setOrigin(0.5).setDepth(8);
     starIcons.push({ bg: starBg, text: starGlyph, unlocked: false, threshold: TARGET_SCORE * pct });
   });
 
-  // 3. Bottom Utility & Booster Dock
-  ui.fillStyle(0x0C1222, 0.9);
+  ui.fillStyle(0x0C1222, 0.85);
   ui.fillRoundedRect(42, 930, 576, 90, 20);
   ui.lineStyle(2, 0x1E2E4A, 0.9);
   ui.strokeRoundedRect(42, 930, 576, 90, 20);
@@ -136,17 +331,11 @@ function buildUserInterface(scene) {
   boosterNames.forEach((label, i) => {
     const btnX = 110 + i * 175;
     const btnY = 975;
-
     ui.fillStyle(0x172238, 1);
     ui.fillRoundedRect(btnX - 65, btnY - 30, 130, 60, 14);
     ui.lineStyle(1.5, 0x2A3B5C, 1);
     ui.strokeRoundedRect(btnX - 65, btnY - 30, 130, 60, 14);
-
-    scene.add.text(btnX, btnY, label, {
-      fontSize: '15px',
-      fontStyle: 'bold',
-      color: '#94A3B8'
-    }).setOrigin(0.5).setDepth(6);
+    scene.add.text(btnX, btnY, label, { fontSize: '15px', fontStyle: 'bold', color: '#94A3B8' }).setOrigin(0.5).setDepth(6);
   });
 }
 
@@ -159,7 +348,6 @@ function updateProgressBar(currentScore) {
     progressBar.fillRoundedRect(42, 180, fillWidth, 20, 10);
   }
 
-  // Update Star Badges as Score Milestone is reached
   starIcons.forEach(star => {
     if (!star.unlocked && currentScore >= star.threshold) {
       star.unlocked = true;
@@ -178,13 +366,11 @@ function drawBoardGrid(scene) {
   const boardX = BOARD_OFFSET_X - 10;
   const boardY = BOARD_OFFSET_Y - 10;
 
-  // Outer bezel frame
-  bg.fillStyle(0x0C1222, 0.95);
+  bg.fillStyle(0x090D1A, 0.7);
   bg.fillRoundedRect(boardX, boardY, boardW, boardH, 20);
-  bg.lineStyle(2, 0x1E293B, 1);
+  bg.lineStyle(2, 0x1E293B, 0.8);
   bg.strokeRoundedRect(boardX, boardY, boardW, boardH, 20);
 
-  // Individual separated grid boxes
   for (let r = 0; r < GRID_ROWS; r++) {
     for (let c = 0; c < GRID_COLS; c++) {
       const cellGap = 7;
@@ -192,132 +378,15 @@ function drawBoardGrid(scene) {
       const cellY = BOARD_OFFSET_Y + r * TILE_SIZE + cellGap;
       const cellSize = TILE_SIZE - (cellGap * 2);
 
-      bg.fillStyle(0x11192E, 0.9);
+      bg.fillStyle(0x11192E, 0.8);
       bg.fillRoundedRect(cellX, cellY, cellSize, cellSize, 14);
-
-      bg.lineStyle(1.5, 0x1E2E4A, 0.85);
+      bg.lineStyle(1.5, 0x1E2E4A, 0.5);
       bg.strokeRoundedRect(cellX, cellY, cellSize, cellSize, 14);
     }
   }
 }
 
-function generateAllDirectTextures(scene) {
-  LUMEN_CONFIGS.forEach(cfg => {
-    drawSingleDirectTexture(scene, cfg, false);
-    drawSingleDirectTexture(scene, cfg, true);
-  });
-}
-
-function drawSingleDirectTexture(scene, cfg, isOpen) {
-  const g = scene.make.graphics({ x: 0, y: 0, add: false });
-  const cx = 35;
-  const cy = 35;
-
-  g.fillStyle(cfg.light, 1);
-  g.lineStyle(2, 0xFFFFFF, 0.95);
-
-  if (cfg.shape === 'diamond') {
-    g.beginPath();
-    g.moveTo(cx, cy - 20);
-    g.lineTo(cx + 18, cy);
-    g.lineTo(cx, cy + 20);
-    g.lineTo(cx - 18, cy);
-    g.closePath();
-    g.fillPath();
-    g.strokePath();
-  } else if (cfg.shape === 'droplet') {
-    g.beginPath();
-    g.moveTo(cx, cy - 22);
-    g.lineTo(cx + 17, cy + 5);
-    g.arc(cx, cy + 5, 17, 0, Math.PI, false);
-    g.lineTo(cx, cy - 22);
-    g.closePath();
-    g.fillPath();
-    g.strokePath();
-  } else if (cfg.shape === 'star') {
-    g.beginPath();
-    for (let i = 0; i < 8; i++) {
-      const a = (Math.PI / 4) * i - Math.PI / 2;
-      const r = i % 2 === 0 ? 20 : 8;
-      const x = cx + Math.cos(a) * r;
-      const y = cy + Math.sin(a) * r;
-      if (i === 0) g.moveTo(x, y);
-      else g.lineTo(x, y);
-    }
-    g.closePath();
-    g.fillPath();
-    g.strokePath();
-  } else if (cfg.shape === 'round') {
-    g.fillCircle(cx, cy, 18);
-    g.strokeCircle(cx, cy, 18);
-  } else if (cfg.shape === 'flame') {
-    g.beginPath();
-    g.moveTo(cx, cy - 21);
-    g.lineTo(cx + 18, cy - 5);
-    g.lineTo(cx + 15, cy + 17);
-    g.lineTo(cx - 15, cy + 17);
-    g.lineTo(cx - 18, cy - 5);
-    g.closePath();
-    g.fillPath();
-    g.strokePath();
-  } else if (cfg.shape === 'hexagon') {
-    g.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const a = (Math.PI / 3) * i - Math.PI / 2;
-      const x = cx + Math.cos(a) * 19;
-      const y = cy + Math.sin(a) * 19;
-      if (i === 0) g.moveTo(x, y);
-      else g.lineTo(x, y);
-    }
-    g.closePath();
-    g.fillPath();
-    g.strokePath();
-  } else if (cfg.shape === 'heart') {
-    g.fillCircle(cx - 8, cy - 6, 9);
-    g.fillCircle(cx + 8, cy - 6, 9);
-    g.fillTriangle(cx - 16, cy - 3, cx + 16, cy - 3, cx, cy + 18);
-    g.strokeCircle(cx - 8, cy - 6, 9);
-    g.strokeCircle(cx + 8, cy - 6, 9);
-  }
-
-  // Gloss Highlight
-  g.fillStyle(0xFFFFFF, 0.45);
-  g.fillEllipse(cx, cy - 9, 10, 4.5);
-
-  // Rosy Cheeks
-  g.fillStyle(0xFB7185, 0.75);
-  g.fillEllipse(cx - 9, cy + cfg.faceY + 3, 3.5, 2);
-  g.fillEllipse(cx + 9, cy + cfg.faceY + 3, 3.5, 2);
-
-  // Facial features
-  const faceY = cy + cfg.faceY;
-  if (!isOpen) {
-    g.lineStyle(2, 0x1E1B4B, 1);
-    g.beginPath();
-    g.moveTo(cx - 10, faceY - 1); g.lineTo(cx - 4, faceY - 1);
-    g.moveTo(cx + 4, faceY - 1);  g.lineTo(cx + 10, faceY - 1);
-    g.strokePath();
-
-    g.beginPath();
-    g.arc(cx, faceY + 2, 2.5, 0.2, Math.PI - 0.2, false);
-    g.strokePath();
-  } else {
-    g.fillStyle(0x1E1B4B, 1);
-    g.fillCircle(cx - 7, faceY - 1, 4);
-    g.fillCircle(cx + 7, faceY - 1, 4);
-
-    g.fillStyle(0xFFFFFF, 1);
-    g.fillCircle(cx - 5.5, faceY - 2, 1.5);
-    g.fillCircle(cx + 8.5, faceY - 2, 1.5);
-
-    g.fillStyle(0x1E1B4B, 1);
-    g.fillCircle(cx, faceY + 3, 2.2);
-  }
-
-  g.generateTexture(`${cfg.name}_${isOpen ? 'open' : 'closed'}`, 70, 70);
-  g.destroy();
-}
-
+// --- CORE GAMEPLAY MECHANICS ---
 function spawnGrid(scene) {
   for (let r = 0; r < GRID_ROWS; r++) {
     board[r] = [];
@@ -355,7 +424,7 @@ function startFloating(scene, lumen) {
 
   lumen.floatTween = scene.tweens.add({
     targets: lumen.sprite,
-    y: lumen.baseY - 3,
+    y: lumen.baseY - 4,
     scaleX: 1.03,
     scaleY: 0.97,
     duration: randomDuration,
@@ -394,7 +463,7 @@ function handlePointerMove(scene, pointer) {
 
       const dist = Phaser.Math.Distance.Between(pointer.x, pointer.y, lumen.sprite.x, lumen.sprite.y);
 
-      if (dist < 38) {
+      if (dist < 40) {
         if (!isDragging) {
           isDragging = true;
           currentType = lumen.type;
@@ -456,7 +525,7 @@ function drawLine() {
   if (selectedLumens.length < 2) return;
 
   const activeColor = LUMEN_CONFIGS[currentType].color;
-  lineLayer.lineStyle(7, activeColor, 0.95);
+  lineLayer.lineStyle(8, activeColor, 0.95);
   lineLayer.beginPath();
   lineLayer.moveTo(selectedLumens[0].sprite.x, selectedLumens[0].sprite.y);
 
@@ -474,11 +543,9 @@ function endConnection(scene) {
   if (selectedLumens.length >= 3) {
     isAnimating = true;
 
-    // Deduct one move on valid match
     movesRemaining--;
     movesText.setText(`${movesRemaining}`);
 
-    // Update score and smooth progress bar
     score += selectedLumens.length * 15;
     scoreText.setText(`SCORE: ${score}`);
     updateProgressBar(score);
