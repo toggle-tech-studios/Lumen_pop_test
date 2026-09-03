@@ -1,25 +1,25 @@
 const GRID_ROWS = 6;
 const GRID_COLS = 6;
-const TILE_SIZE = 85;
-const BOARD_OFFSET_X = 75;
-const BOARD_OFFSET_Y = 320;
+const TILE_SIZE = 96;
+const BOARD_OFFSET_X = 42;
+const BOARD_OFFSET_Y = 280;
 
 // All 7 Original Lumens
 const LUMEN_CONFIGS = [
-  { name: 'aether',  base: 0x0284c7, light: 0x38bdf8, shape: 'diamond', faceY: 3,  color: 0x38bdf8 },
-  { name: 'verdant', base: 0x059669, light: 0x34d399, shape: 'droplet', faceY: 6,  color: 0x34d399 },
-  { name: 'solar',   base: 0xd97706, light: 0xfbbf24, shape: 'star',    faceY: 2,  color: 0xfbbf24 },
+  { name: 'aether',  base: 0x0284c7, light: 0x38bdf8, shape: 'diamond', faceY: 2,  color: 0x38bdf8 },
+  { name: 'verdant', base: 0x059669, light: 0x34d399, shape: 'droplet', faceY: 4,  color: 0x34d399 },
+  { name: 'solar',   base: 0xd97706, light: 0xfbbf24, shape: 'star',    faceY: 1,  color: 0xfbbf24 },
   { name: 'cosmic',  base: 0x7c3aed, light: 0xc084fc, shape: 'round',   faceY: 0,  color: 0xc084fc },
-  { name: 'blaze',   base: 0xbe123c, light: 0xf43f5e, shape: 'flame',   faceY: 7,  color: 0xf43f5e },
+  { name: 'blaze',   base: 0xbe123c, light: 0xf43f5e, shape: 'flame',   faceY: 5,  color: 0xf43f5e },
   { name: 'terra',   base: 0xc2410c, light: 0xf97316, shape: 'hexagon', faceY: 0,  color: 0xf97316 },
-  { name: 'nova',    base: 0xbe185d, light: 0xf472b6, shape: 'heart',   faceY: -3, color: 0xf472b6 }
+  { name: 'nova',    base: 0xbe185d, light: 0xf472b6, shape: 'heart',   faceY: -2, color: 0xf472b6 }
 ];
 
 const config = {
   type: Phaser.AUTO,
   width: 660,
   height: 1000,
-  backgroundColor: '#0A0D1A',
+  backgroundColor: '#070A14',
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH
@@ -45,18 +45,17 @@ function create() {
 
   generateAllDirectTextures(scene);
 
-  scoreText = scene.add.text(330, 120, 'SCORE: 0', {
+  scoreText = scene.add.text(330, 110, 'SCORE: 0', {
     fontSize: '36px',
     fontStyle: 'bold',
     color: '#FFFFFF'
   }).setOrigin(0.5);
 
-  scene.add.text(330, 170, 'Connect 3 or more resting spirits to wake them', {
-    fontSize: '18px',
+  scene.add.text(330, 155, 'Connect 3 or more resting spirits to wake them', {
+    fontSize: '17px',
     color: '#94A3B8'
   }).setOrigin(0.5);
 
-  // Draw board background cells/grid frame
   drawBoardGrid(scene);
 
   lineLayer = scene.add.graphics();
@@ -74,69 +73,72 @@ function create() {
   scene.input.on('pointermove', (pointer) => handlePointerMove(scene, pointer));
 }
 
-// Draws subtle dark rounded tile pockets behind each piece
+// Crisp individual pocket tiles with clear dark borders between every cell
 function drawBoardGrid(scene) {
-  const bgGraphics = scene.add.graphics();
-  bgGraphics.setDepth(0);
+  const bg = scene.add.graphics();
+  bg.setDepth(0);
 
-  // Outer Board Shadow / Panel
-  const boardW = GRID_COLS * TILE_SIZE + 24;
-  const boardH = GRID_ROWS * TILE_SIZE + 24;
-  const boardX = BOARD_OFFSET_X - 12;
-  const boardY = BOARD_OFFSET_Y - 12;
+  const boardW = GRID_COLS * TILE_SIZE + 20;
+  const boardH = GRID_ROWS * TILE_SIZE + 20;
+  const boardX = BOARD_OFFSET_X - 10;
+  const boardY = BOARD_OFFSET_Y - 10;
 
-  bgGraphics.fillStyle(0x0E1424, 0.85);
-  bgGraphics.fillRoundedRect(boardX, boardY, boardW, boardH, 24);
-  bgGraphics.lineStyle(2, 0x1E293B, 0.9);
-  bgGraphics.strokeRoundedRect(boardX, boardY, boardW, boardH, 24);
+  // Outer bezel frame
+  bg.fillStyle(0x0C1222, 0.95);
+  bg.fillRoundedRect(boardX, boardY, boardW, boardH, 20);
+  bg.lineStyle(2, 0x1E293B, 1);
+  bg.strokeRoundedRect(boardX, boardY, boardW, boardH, 20);
 
-  // Individual Cell Slots
+  // Individual separated grid boxes
   for (let r = 0; r < GRID_ROWS; r++) {
     for (let c = 0; c < GRID_COLS; c++) {
-      const cellX = BOARD_OFFSET_X + c * TILE_SIZE + 6;
-      const cellY = BOARD_OFFSET_Y + r * TILE_SIZE + 6;
-      const cellSize = TILE_SIZE - 12;
+      const cellGap = 7;
+      const cellX = BOARD_OFFSET_X + c * TILE_SIZE + cellGap;
+      const cellY = BOARD_OFFSET_Y + r * TILE_SIZE + cellGap;
+      const cellSize = TILE_SIZE - (cellGap * 2);
 
-      bgGraphics.fillStyle(0x131D31, 0.7);
-      bgGraphics.fillRoundedRect(cellX, cellY, cellSize, cellSize, 16);
+      // Deep tile pocket
+      bg.fillStyle(0x11192E, 0.9);
+      bg.fillRoundedRect(cellX, cellY, cellSize, cellSize, 14);
 
-      bgGraphics.lineStyle(1.5, 0x1E293B, 0.45);
-      bgGraphics.strokeRoundedRect(cellX, cellY, cellSize, cellSize, 16);
+      // Distinct cell border
+      bg.lineStyle(1.5, 0x1E2E4A, 0.85);
+      bg.strokeRoundedRect(cellX, cellY, cellSize, cellSize, 14);
     }
   }
 }
 
-// Directly draw textures scaled down to ~26-28px so they sit cleanly in their tile
+// Draw compact, perfectly proportioned Lumens (~20px radius)
 function generateAllDirectTextures(scene) {
   LUMEN_CONFIGS.forEach(cfg => {
-    drawSingleDirectTexture(scene, cfg, false); // closed eyes
-    drawSingleDirectTexture(scene, cfg, true);  // open eyes
+    drawSingleDirectTexture(scene, cfg, false);
+    drawSingleDirectTexture(scene, cfg, true);
   });
 }
 
 function drawSingleDirectTexture(scene, cfg, isOpen) {
   const g = scene.make.graphics({ x: 0, y: 0, add: false });
-  const cx = 45;
-  const cy = 45;
+  const cx = 35;
+  const cy = 35;
 
   g.fillStyle(cfg.light, 1);
-  g.lineStyle(2.5, 0xFFFFFF, 0.95);
+  g.lineStyle(2, 0xFFFFFF, 0.95);
 
   if (cfg.shape === 'diamond') {
     g.beginPath();
-    g.moveTo(cx, cy - 28);
-    g.lineTo(cx + 26, cy);
-    g.lineTo(cx, cy + 28);
-    g.lineTo(cx - 26, cy);
+    g.moveTo(cx, cy - 20);
+    g.lineTo(cx + 18, cy);
+    g.lineTo(cx, cy + 20);
+    g.lineTo(cx - 18, cy);
     g.closePath();
     g.fillPath();
     g.strokePath();
   } else if (cfg.shape === 'droplet') {
     g.beginPath();
-    g.moveTo(cx, cy - 30);
-    g.lineTo(cx + 25, cy + 8);
-    g.arc(cx, cy + 8, 25, 0, Math.PI, false);
-    g.lineTo(cx, cy - 30);
+    g.moveTo(cx, cy - 22);
+    g.lineTo(cx + 17, cy + 5);
+    g.arc(cx, cy + 5, 17, 0, Math.PI, false);
+    g.lineTo(cx, cy - 22);
     g.closePath();
     g.fillPath();
     g.strokePath();
@@ -144,7 +146,7 @@ function drawSingleDirectTexture(scene, cfg, isOpen) {
     g.beginPath();
     for (let i = 0; i < 8; i++) {
       const a = (Math.PI / 4) * i - Math.PI / 2;
-      const r = i % 2 === 0 ? 28 : 11;
+      const r = i % 2 === 0 ? 20 : 8;
       const x = cx + Math.cos(a) * r;
       const y = cy + Math.sin(a) * r;
       if (i === 0) g.moveTo(x, y);
@@ -154,15 +156,15 @@ function drawSingleDirectTexture(scene, cfg, isOpen) {
     g.fillPath();
     g.strokePath();
   } else if (cfg.shape === 'round') {
-    g.fillCircle(cx, cy, 25);
-    g.strokeCircle(cx, cy, 25);
+    g.fillCircle(cx, cy, 18);
+    g.strokeCircle(cx, cy, 18);
   } else if (cfg.shape === 'flame') {
     g.beginPath();
-    g.moveTo(cx, cy - 30);
-    g.lineTo(cx + 25, cy - 8);
-    g.lineTo(cx + 22, cy + 24);
-    g.lineTo(cx - 22, cy + 24);
-    g.lineTo(cx - 25, cy - 8);
+    g.moveTo(cx, cy - 21);
+    g.lineTo(cx + 18, cy - 5);
+    g.lineTo(cx + 15, cy + 17);
+    g.lineTo(cx - 15, cy + 17);
+    g.lineTo(cx - 18, cy - 5);
     g.closePath();
     g.fillPath();
     g.strokePath();
@@ -170,8 +172,8 @@ function drawSingleDirectTexture(scene, cfg, isOpen) {
     g.beginPath();
     for (let i = 0; i < 6; i++) {
       const a = (Math.PI / 3) * i - Math.PI / 2;
-      const x = cx + Math.cos(a) * 26;
-      const y = cy + Math.sin(a) * 26;
+      const x = cx + Math.cos(a) * 19;
+      const y = cy + Math.sin(a) * 19;
       if (i === 0) g.moveTo(x, y);
       else g.lineTo(x, y);
     }
@@ -179,50 +181,48 @@ function drawSingleDirectTexture(scene, cfg, isOpen) {
     g.fillPath();
     g.strokePath();
   } else if (cfg.shape === 'heart') {
-    g.fillCircle(cx - 11, cy - 9, 13);
-    g.fillCircle(cx + 11, cy - 9, 13);
-    g.fillTriangle(cx - 23, cy - 4, cx + 23, cy - 4, cx, cy + 26);
-    g.strokeCircle(cx - 11, cy - 9, 13);
-    g.strokeCircle(cx + 11, cy - 9, 13);
+    g.fillCircle(cx - 8, cy - 6, 9);
+    g.fillCircle(cx + 8, cy - 6, 9);
+    g.fillTriangle(cx - 16, cy - 3, cx + 16, cy - 3, cx, cy + 18);
+    g.strokeCircle(cx - 8, cy - 6, 9);
+    g.strokeCircle(cx + 8, cy - 6, 9);
   }
 
   // Gloss Highlight
   g.fillStyle(0xFFFFFF, 0.45);
-  g.fillEllipse(cx, cy - 13, 14, 6);
+  g.fillEllipse(cx, cy - 9, 10, 4.5);
 
   // Rosy Cheeks
   g.fillStyle(0xFB7185, 0.75);
-  g.fillEllipse(cx - 13, cy + cfg.faceY + 4, 4.5, 2.5);
-  g.fillEllipse(cx + 13, cy + cfg.faceY + 4, 4.5, 2.5);
+  g.fillEllipse(cx - 9, cy + cfg.faceY + 3, 3.5, 2);
+  g.fillEllipse(cx + 9, cy + cfg.faceY + 3, 3.5, 2);
 
-  // Eyes & Facial Expressions
+  // Facial features
   const faceY = cy + cfg.faceY;
   if (!isOpen) {
-    g.lineStyle(2.5, 0x1E1B4B, 1);
+    g.lineStyle(2, 0x1E1B4B, 1);
     g.beginPath();
-    g.moveTo(cx - 14, faceY - 2); g.lineTo(cx - 6, faceY - 2);
-    g.moveTo(cx + 6, faceY - 2);  g.lineTo(cx + 14, faceY - 2);
+    g.moveTo(cx - 10, faceY - 1); g.lineTo(cx - 4, faceY - 1);
+    g.moveTo(cx + 4, faceY - 1);  g.lineTo(cx + 10, faceY - 1);
     g.strokePath();
 
     g.beginPath();
-    g.arc(cx, faceY + 3, 3, 0.2, Math.PI - 0.2, false);
+    g.arc(cx, faceY + 2, 2.5, 0.2, Math.PI - 0.2, false);
     g.strokePath();
   } else {
     g.fillStyle(0x1E1B4B, 1);
-    g.fillCircle(cx - 10, faceY - 2, 5.5);
-    g.fillCircle(cx + 10, faceY - 2, 5.5);
+    g.fillCircle(cx - 7, faceY - 1, 4);
+    g.fillCircle(cx + 7, faceY - 1, 4);
 
     g.fillStyle(0xFFFFFF, 1);
-    g.fillCircle(cx - 8, faceY - 3.5, 2);
-    g.fillCircle(cx + 12, faceY - 3.5, 2);
+    g.fillCircle(cx - 5.5, faceY - 2, 1.5);
+    g.fillCircle(cx + 8.5, faceY - 2, 1.5);
 
     g.fillStyle(0x1E1B4B, 1);
-    g.fillCircle(cx, faceY + 4, 3);
-    g.fillStyle(0xF43F5E, 1);
-    g.fillCircle(cx, faceY + 5, 1.5);
+    g.fillCircle(cx, faceY + 3, 2.2);
   }
 
-  g.generateTexture(`${cfg.name}_${isOpen ? 'open' : 'closed'}`, 90, 90);
+  g.generateTexture(`${cfg.name}_${isOpen ? 'open' : 'closed'}`, 70, 70);
   g.destroy();
 }
 
@@ -263,7 +263,7 @@ function startFloating(scene, lumen) {
 
   lumen.floatTween = scene.tweens.add({
     targets: lumen.sprite,
-    y: lumen.baseY - 4,
+    y: lumen.baseY - 3,
     scaleX: 1.03,
     scaleY: 0.97,
     duration: randomDuration,
@@ -302,7 +302,7 @@ function handlePointerMove(scene, pointer) {
 
       const dist = Phaser.Math.Distance.Between(pointer.x, pointer.y, lumen.sprite.x, lumen.sprite.y);
 
-      if (dist < 36) {
+      if (dist < 38) {
         if (!isDragging) {
           isDragging = true;
           currentType = lumen.type;
@@ -364,7 +364,7 @@ function drawLine() {
   if (selectedLumens.length < 2) return;
 
   const activeColor = LUMEN_CONFIGS[currentType].color;
-  lineLayer.lineStyle(8, activeColor, 0.95);
+  lineLayer.lineStyle(7, activeColor, 0.95);
   lineLayer.beginPath();
   lineLayer.moveTo(selectedLumens[0].sprite.x, selectedLumens[0].sprite.y);
 
