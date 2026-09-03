@@ -2,7 +2,7 @@ const GRID_ROWS = 6;
 const GRID_COLS = 6;
 const TILE_SIZE = 96;
 const BOARD_OFFSET_X = 42;
-const BOARD_OFFSET_Y = 280;
+const BOARD_OFFSET_Y = 320;
 
 // All 7 Original Lumens
 const LUMEN_CONFIGS = [
@@ -18,7 +18,7 @@ const LUMEN_CONFIGS = [
 const config = {
   type: Phaser.AUTO,
   width: 660,
-  height: 1000,
+  height: 1060,
   backgroundColor: '#070A14',
   scale: {
     mode: Phaser.Scale.FIT,
@@ -36,26 +36,20 @@ let selectedLumens = [];
 let isDragging = false;
 let currentType = null;
 let lineLayer;
+
+// Gameplay Stats
 let score = 0;
-let scoreText;
+let movesRemaining = 25;
+const TARGET_SCORE = 1500;
+let scoreText, movesText;
+let progressBar, starIcons = [];
 let isAnimating = false;
 
 function create() {
   const scene = this;
 
   generateAllDirectTextures(scene);
-
-  scoreText = scene.add.text(330, 110, 'SCORE: 0', {
-    fontSize: '36px',
-    fontStyle: 'bold',
-    color: '#FFFFFF'
-  }).setOrigin(0.5);
-
-  scene.add.text(330, 155, 'Connect 3 or more resting spirits to wake them', {
-    fontSize: '17px',
-    color: '#94A3B8'
-  }).setOrigin(0.5);
-
+  buildUserInterface(scene);
   drawBoardGrid(scene);
 
   lineLayer = scene.add.graphics();
@@ -73,7 +67,108 @@ function create() {
   scene.input.on('pointermove', (pointer) => handlePointerMove(scene, pointer));
 }
 
-// Crisp individual pocket tiles with clear dark borders between every cell
+// Builds the complete Header, Progress Tracker, and Bottom Utility Dock
+function buildUserInterface(scene) {
+  const ui = scene.add.graphics();
+  ui.setDepth(5);
+
+  // 1. Top Glass Header Card
+  ui.fillStyle(0x0C1222, 0.9);
+  ui.fillRoundedRect(30, 24, 600, 96, 20);
+  ui.lineStyle(2, 0x1E2E4A, 0.9);
+  ui.strokeRoundedRect(30, 24, 600, 96, 20);
+
+  // Level Badge (Left)
+  ui.fillStyle(0x1B253D, 1);
+  ui.fillRoundedRect(44, 36, 110, 72, 14);
+  scene.add.text(99, 56, 'LEVEL', { fontSize: '13px', fontStyle: 'bold', color: '#64748B' }).setOrigin(0.5).setDepth(6);
+  scene.add.text(99, 82, '1', { fontSize: '26px', fontStyle: 'bold', color: '#38BDF8' }).setOrigin(0.5).setDepth(6);
+
+  // Target Score (Middle)
+  scene.add.text(260, 56, 'TARGET', { fontSize: '13px', fontStyle: 'bold', color: '#64748B' }).setOrigin(0.5).setDepth(6);
+  scene.add.text(260, 82, `${TARGET_SCORE}`, { fontSize: '22px', fontStyle: 'bold', color: '#F1F5F9' }).setOrigin(0.5).setDepth(6);
+
+  // Moves Left Badge (Right)
+  ui.fillStyle(0x1B253D, 1);
+  ui.fillRoundedRect(480, 36, 136, 72, 14);
+  scene.add.text(548, 56, 'MOVES', { fontSize: '13px', fontStyle: 'bold', color: '#64748B' }).setOrigin(0.5).setDepth(6);
+  movesText = scene.add.text(548, 82, `${movesRemaining}`, { fontSize: '26px', fontStyle: 'bold', color: '#F59E0B' }).setOrigin(0.5).setDepth(6);
+
+  // 2. Score & Star Progress Bar Section
+  scoreText = scene.add.text(48, 146, 'SCORE: 0', {
+    fontSize: '20px',
+    fontStyle: 'bold',
+    color: '#E2E8F0'
+  }).setDepth(6);
+
+  // Progress Bar Background Track
+  ui.fillStyle(0x131D31, 1);
+  ui.fillRoundedRect(42, 180, 576, 20, 10);
+  ui.lineStyle(1.5, 0x1E293B, 1);
+  ui.strokeRoundedRect(42, 180, 576, 20, 10);
+
+  // Dynamic Fill Layer
+  progressBar = scene.add.graphics().setDepth(6);
+  updateProgressBar(0);
+
+  // 3 Star Milestone Anchors (33%, 66%, 100%)
+  const starFractions = [0.33, 0.66, 1.0];
+  starFractions.forEach((pct, idx) => {
+    const starX = 42 + 576 * pct;
+    const starY = 190;
+
+    const starBg = scene.add.circle(starX, starY, 14, 0x1B253D).setStrokeStyle(2, 0x334155).setDepth(7);
+    const starGlyph = scene.add.text(starX, starY - 1, '★', {
+      fontSize: '15px',
+      color: '#475569'
+    }).setOrigin(0.5).setDepth(8);
+
+    starIcons.push({ bg: starBg, text: starGlyph, unlocked: false, threshold: TARGET_SCORE * pct });
+  });
+
+  // 3. Bottom Utility & Booster Dock
+  ui.fillStyle(0x0C1222, 0.9);
+  ui.fillRoundedRect(42, 930, 576, 90, 20);
+  ui.lineStyle(2, 0x1E2E4A, 0.9);
+  ui.strokeRoundedRect(42, 930, 576, 90, 20);
+
+  const boosterNames = ['SHUFFLE', 'BOMB', 'BURST'];
+  boosterNames.forEach((label, i) => {
+    const btnX = 110 + i * 175;
+    const btnY = 975;
+
+    ui.fillStyle(0x172238, 1);
+    ui.fillRoundedRect(btnX - 65, btnY - 30, 130, 60, 14);
+    ui.lineStyle(1.5, 0x2A3B5C, 1);
+    ui.strokeRoundedRect(btnX - 65, btnY - 30, 130, 60, 14);
+
+    scene.add.text(btnX, btnY, label, {
+      fontSize: '15px',
+      fontStyle: 'bold',
+      color: '#94A3B8'
+    }).setOrigin(0.5).setDepth(6);
+  });
+}
+
+function updateProgressBar(currentScore) {
+  progressBar.clear();
+  const fillWidth = Math.min(576, (currentScore / TARGET_SCORE) * 576);
+
+  if (fillWidth > 0) {
+    progressBar.fillStyle(0x38BDF8, 1);
+    progressBar.fillRoundedRect(42, 180, fillWidth, 20, 10);
+  }
+
+  // Update Star Badges as Score Milestone is reached
+  starIcons.forEach(star => {
+    if (!star.unlocked && currentScore >= star.threshold) {
+      star.unlocked = true;
+      star.bg.setStrokeStyle(2, 0xFBBF24);
+      star.text.setColor('#FBBF24');
+    }
+  });
+}
+
 function drawBoardGrid(scene) {
   const bg = scene.add.graphics();
   bg.setDepth(0);
@@ -97,18 +192,15 @@ function drawBoardGrid(scene) {
       const cellY = BOARD_OFFSET_Y + r * TILE_SIZE + cellGap;
       const cellSize = TILE_SIZE - (cellGap * 2);
 
-      // Deep tile pocket
       bg.fillStyle(0x11192E, 0.9);
       bg.fillRoundedRect(cellX, cellY, cellSize, cellSize, 14);
 
-      // Distinct cell border
       bg.lineStyle(1.5, 0x1E2E4A, 0.85);
       bg.strokeRoundedRect(cellX, cellY, cellSize, cellSize, 14);
     }
   }
 }
 
-// Draw compact, perfectly proportioned Lumens (~20px radius)
 function generateAllDirectTextures(scene) {
   LUMEN_CONFIGS.forEach(cfg => {
     drawSingleDirectTexture(scene, cfg, false);
@@ -381,8 +473,15 @@ function endConnection(scene) {
 
   if (selectedLumens.length >= 3) {
     isAnimating = true;
+
+    // Deduct one move on valid match
+    movesRemaining--;
+    movesText.setText(`${movesRemaining}`);
+
+    // Update score and smooth progress bar
     score += selectedLumens.length * 15;
-    scoreText.setText('SCORE: ' + score);
+    scoreText.setText(`SCORE: ${score}`);
+    updateProgressBar(score);
 
     selectedLumens.forEach(lumen => {
       if (lumen.floatTween) lumen.floatTween.stop();
