@@ -2,43 +2,33 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  
-  <!-- Optimal viewport for mobile games: fits to screen, disables pinch-zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-
-  <!-- iOS / Progressive Web App (PWA) Settings -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#050811">
-
-  <title>Lumen Pop</title>
-
+  <title>Lumen Link</title>
   <style>
-    /* CSS Reset & Aggressive Mobile Optimizations */
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-      touch-action: none;                       /* Disables browser zooming/panning */
-      user-select: none;                        /* Disables text selection */
+      touch-action: none;
+      user-select: none;
       -webkit-user-select: none;
-      -webkit-touch-callout: none;              /* Disables long-press popup menus on iOS */
-      -webkit-tap-highlight-color: transparent; /* Removes the blue flash when tapping */
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
     }
-
     body {
-      /* Deep cosmic radial gradient matching the game's background */
-      background: radial-gradient(circle at center, #1A1433 0%, #050811 100%);
+      background: #090d16;
       display: flex;
       justify-content: center;
       align-items: center;
       width: 100vw;
       height: 100vh;
-      height: 100dvh; /* Modern CSS: accounts for mobile browser address bars */
+      height: 100dvh; 
       overflow: hidden;
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family: system-ui, sans-serif;
     }
-
     #game-container {
       display: flex;
       justify-content: center;
@@ -46,20 +36,15 @@
       width: 100%;
       height: 100%;
     }
-
-    /* Styling the actual game canvas */
     canvas {
       display: block;
       max-width: 100%;
       max-height: 100%;
-      /* Premium multi-layered shadow: Drop shadow + Soft blue outer glow */
-      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(56, 189, 248, 0.15);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(244, 114, 182, 0.15);
     }
-
-    /* Minimalist Loading Screen text */
     #loading {
       position: absolute;
-      color: #38BDF8;
+      color: #f472b6;
       font-weight: 700;
       letter-spacing: 2px;
       font-size: 14px;
@@ -67,25 +52,17 @@
       z-index: -1;
       animation: pulse 1.2s infinite ease-in-out;
     }
-
     @keyframes pulse {
       0%, 100% { opacity: 0.4; }
       50% { opacity: 1; }
     }
   </style>
-  
-  <!-- Load Phaser Engine -->
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
 </head>
 <body>
-  
-  <!-- Placeholder text while the engine boots -->
   <div id="loading">Summoning Lumens...</div>
-
-  <!-- The wrapper where Phaser injects the canvas -->
   <div id="game-container">
     <script src="script.js"></script>
   </div>
-
 </body>
 </html>
