@@ -1,45 +1,79 @@
 // --- PROCEDURAL GRAPHICS & UI DRAWING ---
 
 function generateKidFriendlyBackground(scene) {
-  const canvas = document.createElement('canvas'); canvas.width = 660; canvas.height = 1100;
-  const ctx = canvas.getContext('2d'); const w = canvas.width, h = canvas.height;
+  const canvas = document.createElement('canvas'); 
+  canvas.width = 660; 
+  canvas.height = 1100;
+  const ctx = canvas.getContext('2d'); 
+  const w = canvas.width, h = canvas.height;
   
-  const sky = ctx.createLinearGradient(0, 0, 0, h * 0.6);
-  sky.addColorStop(0, '#6d28d9'); sky.addColorStop(0.3, '#d946ef');
-  sky.addColorStop(0.7, '#f43f5e'); sky.addColorStop(1, '#fbbf24');
-  ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+  // 1. Deep Space Background Gradient
+  const sky = ctx.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, '#10052b'); // Very dark purple at top
+  sky.addColorStop(0.5, '#0b1035'); // Dark navy blue in middle
+  sky.addColorStop(1, '#1a0b2e'); // Deep purple at bottom
+  ctx.fillStyle = sky; 
+  ctx.fillRect(0, 0, w, h);
 
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.shadowBlur = 50; ctx.shadowColor = '#fef08a';
-  ctx.beginPath(); ctx.arc(w * 0.2, h * 0.25, 70, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+  // 2. Draw Tiny Twinkling Background Stars (Stardust)
+  for(let i = 0; i < 150; i++) {
+    // Randomize colors between white, light pink, and cyan
+    let rand = Math.random();
+    if(rand < 0.33) ctx.fillStyle = '#ffffff';
+    else if(rand < 0.66) ctx.fillStyle = '#fbcfe8';
+    else ctx.fillStyle = '#bae6fd';
 
-  function drawCloud(cx, cy, scale, color) {
-    ctx.fillStyle = color; ctx.beginPath();
-    ctx.arc(cx, cy, 30 * scale, 0, Math.PI * 2); ctx.arc(cx + 40 * scale, cy - 20 * scale, 45 * scale, 0, Math.PI * 2);
-    ctx.arc(cx + 80 * scale, cy, 35 * scale, 0, Math.PI * 2); ctx.arc(cx + 40 * scale, cy + 10 * scale, 30 * scale, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = Math.random() * 0.8 + 0.2;
+    ctx.beginPath();
+    ctx.arc(Math.random() * w, Math.random() * h, Math.random() * 2, 0, Math.PI * 2);
+    ctx.fill();
   }
-  drawCloud(w * 0.5, h * 0.1, 1.5, 'rgba(253, 164, 175, 0.6)'); drawCloud(-20, h * 0.2, 1.8, 'rgba(244, 165, 255, 0.5)');
-  drawCloud(w * 0.7, h * 0.3, 1.2, 'rgba(254, 215, 170, 0.6)'); drawCloud(w * 0.1, h * 0.35, 1.4, 'rgba(255, 255, 255, 0.4)');
+  ctx.globalAlpha = 1.0;
 
-  function drawHill(x1, y1, cp1x, cp1y, cp2x, cp2y, x2, y2, colorTop, colorBottom) {
-    const grad = ctx.createLinearGradient(0, Math.min(y1, y2) - 50, 0, h);
-    grad.addColorStop(0, colorTop); grad.addColorStop(1, colorBottom);
-    ctx.fillStyle = grad; ctx.beginPath(); ctx.moveTo(x1, h); ctx.lineTo(x1, y1); ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x2, y2); ctx.lineTo(x2, h); ctx.fill();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x2, y2); ctx.stroke();
+  // 3. Magical Comet Swooshes (Like the Logo)
+  ctx.save();
+  ctx.lineCap = 'round';
+  
+  // Top Blue Swoosh
+  ctx.beginPath();
+  ctx.moveTo(-50, 200);
+  ctx.bezierCurveTo(200, 150, 400, 250, 700, 100);
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)'; // Faint Cyan
+  ctx.lineWidth = 6;
+  ctx.stroke();
+
+  // Bottom Pink/Purple Swoosh
+  ctx.beginPath();
+  ctx.moveTo(700, 900);
+  ctx.bezierCurveTo(450, 850, 200, 1000, -50, 950);
+  ctx.strokeStyle = 'rgba(192, 132, 252, 0.2)'; // Faint Purple
+  ctx.lineWidth = 8;
+  ctx.stroke();
+  ctx.restore();
+
+  // 4. Draw Glowing 4-Point Stars (Like the central logo star)
+  function drawGlowingStar(x, y, size, color) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 20;
+    ctx.fillStyle = '#ffffff';
+    
+    ctx.beginPath();
+    ctx.moveTo(0, -size);
+    ctx.quadraticCurveTo(size * 0.2, -size * 0.2, size, 0);
+    ctx.quadraticCurveTo(size * 0.2, size * 0.2, 0, size);
+    ctx.quadraticCurveTo(-size * 0.2, size * 0.2, -size, 0);
+    ctx.quadraticCurveTo(-size * 0.2, -size * 0.2, 0, -size);
+    ctx.fill();
+    ctx.restore();
   }
 
-  function drawTree(x, y, size, topColor) {
-    ctx.fillStyle = '#713f12'; ctx.beginPath(); ctx.roundRect(x - size*0.1, y, size*0.2, size, 4); ctx.fill();
-    ctx.fillStyle = topColor; ctx.beginPath(); ctx.arc(x, y - size*0.2, size*0.7, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.beginPath(); ctx.arc(x - size*0.2, y - size*0.4, size*0.2, 0, Math.PI*2); ctx.fill();
-  }
-
-  drawHill(0, h * 0.45, w * 0.4, h * 0.35, w * 0.6, h * 0.55, w, h * 0.45, '#8b5cf6', '#4c1d95');
-  drawTree(w*0.1, h*0.44, 30, '#38bdf8'); drawTree(w*0.8, h*0.48, 35, '#f472b6');
-  drawHill(-50, h * 0.55, w * 0.3, h * 0.65, w * 0.7, h * 0.45, w + 50, h * 0.55, '#f472b6', '#be185d');
-  drawTree(w*0.85, h*0.52, 40, '#fbbf24'); drawTree(w*0.15, h*0.58, 45, '#c084fc');
-  drawHill(0, h * 0.7, w * 0.4, h * 0.65, w * 0.5, h * 0.85, w, h * 0.8, '#34d399', '#065f46');
-  drawHill(-50, h * 0.9, w * 0.4, h * 0.8, w * 0.8, h * 0.95, w + 50, h * 0.85, '#10b981', '#064e3b');
-  drawTree(w*0.1, h*0.75, 60, '#f43f5e'); drawTree(w*0.25, h*0.85, 75, '#fbbf24'); drawTree(w*0.9, h*0.82, 65, '#c084fc');
+  drawGlowingStar(120, 150, 25, '#fde047'); // Yellow glow
+  drawGlowingStar(550, 280, 20, '#38bdf8'); // Cyan glow
+  drawGlowingStar(80, 750, 15, '#f472b6');  // Pink glow
+  drawGlowingStar(500, 950, 30, '#c084fc'); // Purple glow
+  drawGlowingStar(330, 60, 12, '#ffffff');  // White glow
   
   scene.textures.addCanvas('bg', canvas);
 }
