@@ -28,21 +28,16 @@ function getLevelData(level) {
   if (level > 30) colors = 6;
   if (level > 60) colors = 7; 
 
-  // Massive score jump: Level 1 is 6000, grows by 1500+ every level
-  let baseTarget = 6000;
-  let target = baseTarget + ((level - 1) * 1500) + (Math.floor(level / 5) * 2000);
-
-  // Intense moves limit: Starts at 25, slowly tightens
-  let moves = 25 - Math.floor(level / 4);
-  if (moves < 14) {
-    moves = 14 + Math.floor((level % 10) / 3); // Gives a breather periodically so it's never impossible
-  }
+  // Level 1 = 3000 target points + 35 moves
+  // Increases by +1000 target points and +20 moves per level
+  let target = 3000 + ((level - 1) * 1000);
+  let moves = 35 + ((level - 1) * 20);
 
   return { level, target, moves, colors };
 }
 
 let currentLevel = 1;
-let TARGET_SCORE = 6000;
+let TARGET_SCORE = 3000;
 let ACTIVE_COLORS = 4;
 
 // --- 💾 SAVE SYSTEM ---
@@ -86,7 +81,7 @@ let particlesLayer;
 let overlayLayer;
 
 let score = 0;
-let movesRemaining = 25;
+let movesRemaining = 35;
 let scoreText;
 let movesText;
 let progressBar;
