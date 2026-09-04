@@ -2,73 +2,39 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#130B24">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Lumen Pop</title>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
   <style>
-    * {
+    body {
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
-      touch-action: none;
-      user-select: none;
-      -webkit-user-select: none;
-      -webkit-touch-callout: none;
-      -webkit-tap-highlight-color: transparent;
-    }
-    body {
-      background: #090d16;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      width: 100vw;
-      height: 100vh;
-      height: 100dvh; 
+      background-color: #090d16;
       overflow: hidden;
-      font-family: system-ui, -apple-system, sans-serif;
-    }
-    #game-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      width: 100%;
-      height: 100%;
+      touch-action: none; /* Prevents mobile scrolling */
     }
     canvas {
       display: block;
-      max-width: 100%;
-      max-height: 100%;
-      box-shadow: 0 15px 50px rgba(0, 0, 0, 0.9), 0 0 40px rgba(139, 92, 246, 0.15);
     }
     #loading {
+      color: #fbcfe8;
+      font-family: system-ui, sans-serif;
+      font-weight: bold;
       position: absolute;
-      color: #C4B5FD;
-      font-weight: 700;
-      letter-spacing: 3px;
-      font-size: 14px;
-      text-transform: uppercase;
-      z-index: -1;
-      animation: pulse 1.2s infinite ease-in-out;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 0.3; }
-      50% { opacity: 1; }
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
 </head>
 <body>
-  <div id="loading">Summoning Lumens...</div>
-  <div id="game-container">
-    <!-- Load the game files in this exact order -->
-<script src="js/config.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/graphics.js"></script>
-<script src="js/logic.js"></script>
-<script src="js/main.js"></script>
-
-  </div>
+  <div id="loading">Loading Engine...</div>
+  
+  <!-- Load the split game files in this exact order -->
+  <script src="js/config.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/graphics.js"></script>
+  <script src="js/logic.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>
