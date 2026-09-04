@@ -5,14 +5,18 @@ const TILE_SIZE = 78;
 const BOARD_OFFSET_X = 57;
 const BOARD_OFFSET_Y = 290;
 
+// LEVEL 1 DIFFICULTY: 5 Colors (Combined with Smart Spawning, makes straight lines easy!)
+const ACTIVE_COLORS = 5; 
+
+// ULTRA-BRIGHT LUMEN COLORS
 const LUMEN_CONFIGS = [
-  { name: 'aether',  base: '#0284c7', light: '#38bdf8', glow: '#bae6fd', shape: 'diamond', faceY: 2,  color: 0x38bdf8 },
-  { name: 'verdant', base: '#059669', light: '#34d399', glow: '#a7f3d0', shape: 'droplet', faceY: 5,  color: 0x34d399 },
-  { name: 'solar',   base: '#d97706', light: '#fbbf24', glow: '#fef08a', shape: 'star',    faceY: 2,  color: 0xfbbf24 },
-  { name: 'cosmic',  base: '#7c3aed', light: '#c084fc', glow: '#e9d5ff', shape: 'round',   faceY: 0,  color: 0xc084fc },
-  { name: 'blaze',   base: '#be123c', light: '#f43f5e', glow: '#fecdd3', shape: 'flame',   faceY: 7,  color: 0xf43f5e },
-  { name: 'terra',   base: '#c2410c', light: '#f97316', glow: '#fed7aa', shape: 'hexagon', faceY: 0,  color: 0xf97316 },
-  { name: 'nova',    base: '#be185d', light: '#f472b6', glow: '#fbcfe8', shape: 'heart',   faceY: -3, color: 0xf472b6 }
+  { name: 'solar',   base: '#F59E0B', light: '#FDE047', glow: '#FEF08A', shape: 'star',    faceY: 2,  color: 0xFDE047 }, 
+  { name: 'nova',    base: '#E11D48', light: '#FB7185', glow: '#FECDD3', shape: 'heart',   faceY: -3, color: 0xFB7185 }, 
+  { name: 'aether',  base: '#0284C7', light: '#38BDF8', glow: '#BAE6FD', shape: 'diamond', faceY: 2,  color: 0x38BDF8 }, 
+  { name: 'verdant', base: '#059669', light: '#34D399', glow: '#A7F3D0', shape: 'droplet', faceY: 5,  color: 0x34D399 }, 
+  { name: 'cosmic',  base: '#7C3AED', light: '#C084FC', glow: '#E9D5FF', shape: 'round',   faceY: 0,  color: 0xC084FC }, 
+  { name: 'terra',   base: '#EA580C', light: '#FB923C', glow: '#FED7AA', shape: 'hexagon', faceY: 0,  color: 0xFB923C }, 
+  { name: 'blaze',   base: '#BE123C', light: '#F43F5E', glow: '#FECDD3', shape: 'flame',   faceY: 7,  color: 0xF43F5E }  
 ];
 
 const config = {
@@ -20,11 +24,7 @@ const config = {
   width: 660,
   height: 1100,
   backgroundColor: '#090d16',
-  scale: { 
-    // ENVELOP ensures no black bars on any device aspect ratio
-    mode: Phaser.Scale.ENVELOP, 
-    autoCenter: Phaser.Scale.CENTER_BOTH 
-  },
+  scale: { mode: Phaser.Scale.ENVELOP, autoCenter: Phaser.Scale.CENTER_BOTH }, // Fits screen perfectly
   scene: { create: create }
 };
 
@@ -34,7 +34,7 @@ let board = [];
 let selectedLumens = [];
 let isDragging = false;
 let currentType = null;
-let currentDirection = null; // Forces straight lines
+let currentDirection = null; // Forces straight-line connections
 let lineLayer, lineGlowLayer, particlesLayer;
 let score = 0, movesRemaining = 35;
 const TARGET_SCORE = 3000;
@@ -42,7 +42,7 @@ let scoreText, movesText, progressBar, starIcons = [];
 let isAnimating = false;
 let boosterButtons = []; 
 
-// --- NEW MAGICAL AUDIO ENGINE ---
+// --- PROCEDURAL AUDIO ENGINE ---
 let audioCtx;
 
 function initAudio() {
@@ -50,31 +50,25 @@ function initAudio() {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   audioCtx = new AudioContext();
   
-  // Soft, magical music-box arpeggio loop instead of static noise
-  const notes = [261.63, 329.63, 392.00, 523.25]; // C E G C
+  const notes = [261.63, 329.63, 392.00, 523.25]; 
   let noteIdx = 0;
-
   setInterval(() => {
     if(!audioCtx) return;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = notes[noteIdx];
-    
+    osc.type = 'sine'; osc.frequency.value = notes[noteIdx];
     gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
-    
     osc.connect(gain); gain.connect(audioCtx.destination);
     osc.start(); osc.stop(audioCtx.currentTime + 1.5);
-    
     noteIdx = (noteIdx + 1) % notes.length;
-  }, 600); // Plays a soft note every 0.6 seconds
+  }, 600); 
 }
 
 function playLinkSound(comboLength) {
   if (!audioCtx) return;
   const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.type = 'sine';
-  const notes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99]; 
+  const notes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00, 1046.50]; 
   osc.frequency.setValueAtTime(notes[Math.min(comboLength - 1, notes.length - 1)], audioCtx.currentTime);
   gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
   osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.3);
@@ -94,6 +88,16 @@ function playBounceSound() {
   osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(60, audioCtx.currentTime + 0.1);
   gain.gain.setValueAtTime(0.05, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
   osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+}
+
+// --- SMART SPAWNING SYSTEM (Makes straight lines easy) ---
+function getSmartColor(r, c) {
+  // 30% chance to artificially clone a neighbor's color to create easy straight lines!
+  if (Math.random() < 0.30) {
+      if (r < GRID_ROWS - 1 && board[r+1] && board[r+1][c]) return board[r+1][c].type;
+      if (c > 0 && board[r] && board[r][c-1]) return board[r][c-1].type;
+  }
+  return Phaser.Math.Between(0, ACTIVE_COLORS - 1);
 }
 
 // --- MAIN GAME SCENE ---
@@ -119,10 +123,9 @@ function create() {
   particlesLayer = scene.add.group();
 
   spawnGrid(scene);
-  updateScoreUI();
+  updateScoreUI(); 
 
   scene.time.addEvent({ delay: 1800, loop: true, callback: () => triggerRandomPeek(scene) });
-
   scene.input.on('pointerdown', () => initAudio());
   scene.input.on('pointerup', () => endConnection(scene));
   scene.input.on('pointermove', (pointer) => handlePointerMove(scene, pointer));
@@ -191,7 +194,8 @@ function createCanvasTexture(scene, cfg, isOpen) {
   const ctx = canvas.getContext('2d');
   
   ctx.save(); ctx.translate(39, 39); ctx.scale(0.8, 0.8); 
-  ctx.shadowColor = cfg.glow; ctx.shadowBlur = 8;
+  ctx.shadowColor = cfg.glow; ctx.shadowBlur = 12; 
+  
   ctx.beginPath();
   if (cfg.shape === 'diamond') { ctx.moveTo(0, -32); ctx.bezierCurveTo(30, -14, 32, 10, 0, 30); ctx.bezierCurveTo(-32, 10, -30, -14, 0, -32); }
   else if (cfg.shape === 'droplet') { ctx.moveTo(0, -34); ctx.bezierCurveTo(30, -10, 32, 26, 0, 26); ctx.bezierCurveTo(-32, 26, -30, -10, 0, -34); }
@@ -205,10 +209,11 @@ function createCanvasTexture(scene, cfg, isOpen) {
   const grad = ctx.createLinearGradient(0, -30, 0, 30);
   grad.addColorStop(0, cfg.glow); grad.addColorStop(0.3, cfg.light); grad.addColorStop(1, cfg.base);
   ctx.fillStyle = grad; ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 2; ctx.stroke();
+  
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2.5; ctx.stroke();
 
   ctx.shadowBlur = 0; ctx.save(); ctx.clip();
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.35)'; ctx.beginPath(); ctx.ellipse(0, -18, 18, 10, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.beginPath(); ctx.ellipse(0, -18, 18, 10, 0, 0, Math.PI * 2); ctx.fill();
 
   ctx.translate(0, cfg.faceY);
   ctx.fillStyle = 'rgba(255, 110, 140, 0.7)'; ctx.beginPath(); ctx.ellipse(-14, 6, 4.5, 2.5, 0, 0, Math.PI * 2); ctx.ellipse(14, 6, 4.5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
@@ -388,7 +393,7 @@ function applyShuffle(scene) {
     for(let c=0; c<GRID_COLS; c++){
       let l = board[r][c];
       if(l) {
-        l.type = Phaser.Math.Between(0, LUMEN_CONFIGS.length-1);
+        l.type = getSmartColor(r, c);
         l.name = LUMEN_CONFIGS[l.type].name; l.color = LUMEN_CONFIGS[l.type].color;
         l.sprite.setTexture(`${l.name}_closed`);
         createBurst(scene, l.sprite.x, l.sprite.y, l.color, 2, 20);
@@ -417,7 +422,7 @@ function applyBomb(scene) {
 
 function applyBurst(scene) {
   isAnimating = true; score -= 600; updateScoreUI(); playPopSound();
-  let targetType = Phaser.Math.Between(0, LUMEN_CONFIGS.length-1);
+  let targetType = Phaser.Math.Between(0, ACTIVE_COLORS - 1);
   for(let r=0; r<GRID_ROWS; r++){
     for(let c=0; c<GRID_COLS; c++){
       let l = board[r][c];
@@ -437,7 +442,7 @@ function spawnGrid(scene) {
   for (let r = 0; r < GRID_ROWS; r++) {
     board[r] = [];
     for (let c = 0; c < GRID_COLS; c++) {
-      const type = Phaser.Math.Between(0, LUMEN_CONFIGS.length - 1);
+      const type = getSmartColor(r, c);
       const cfg = LUMEN_CONFIGS[type];
       const x = BOARD_OFFSET_X + c * TILE_SIZE + TILE_SIZE / 2;
       const y = BOARD_OFFSET_Y + r * TILE_SIZE + TILE_SIZE / 2;
@@ -449,17 +454,23 @@ function spawnGrid(scene) {
   checkDeadlock(scene);
 }
 
+// STRICT STRAIGHT-LINE DEADLOCK DETECTION
 function checkDeadlock(scene) {
-  // Scans board to ensure there is at least one straight line of 3 available
-  const dirs = [[0,1], [1,0], [1,1], [1,-1]]; 
   let movesExist = false;
+  // Directions: Right, Down, Diagonal-Down-Right, Diagonal-Up-Right
+  const dirs = [[0,1], [1,0], [1,1], [-1,1]]; 
 
   for(let r=0; r<GRID_ROWS; r++){
     for(let c=0; c<GRID_COLS; c++){
-      const type = board[r][c].type;
+      if(!board[r][c]) continue;
+      let type = board[r][c].type;
+      
       for(let [dr, dc] of dirs) {
-        if(r + dr*2 < GRID_ROWS && r + dr*2 >= 0 && c + dc*2 < GRID_COLS && c + dc*2 >= 0) {
-           if(board[r+dr][c+dc].type === type && board[r+dr*2][c+dc*2].type === type) {
+        let r2 = r + dr, c2 = c + dc;
+        let r3 = r + dr*2, c3 = c + dc*2;
+        
+        if(r3 >= 0 && r3 < GRID_ROWS && c3 >= 0 && c3 < GRID_COLS) {
+           if(board[r2][c2] && board[r3][c3] && board[r2][c2].type === type && board[r3][c3].type === type) {
               movesExist = true; break;
            }
         }
@@ -469,7 +480,7 @@ function checkDeadlock(scene) {
     if(movesExist) break;
   }
 
-  // If no moves exist, shuffle the board for free
+  // If literally zero straight-line matches exist, force a free shuffle
   if(!movesExist) {
     scene.time.delayedCall(500, () => {
       score += 200; // Refund the shuffle cost temporarily
@@ -496,7 +507,7 @@ function triggerRandomPeek(scene) {
   }
 }
 
-// --- STRAIGHT LINE CONNECTION LOGIC ---
+// --- STRICT STRAIGHT-LINE LINKING ---
 function handlePointerMove(scene, pointer) {
   if (!pointer.isDown || isAnimating) return;
 
@@ -512,24 +523,24 @@ function handlePointerMove(scene, pointer) {
         } else if (lumen.type === currentType) {
           
           if (selectedLumens.length > 1 && lumen === selectedLumens[selectedLumens.length - 2]) {
-            // Undo logic
+            // BACKTRACK / UNDO
             const removed = selectedLumens.pop(); 
-            if(selectedLumens.length === 1) currentDirection = null; // Reset direction if back to 1
+            if(selectedLumens.length === 1) currentDirection = null; // Unlock direction if back to start
             resetLumenVisual(scene, removed); drawLine();
           } else if (!selectedLumens.includes(lumen)) {
-            // New connection logic (Enforce straight lines)
+            
+            // NEW CONNECTION (ENFORCE STRAIGHT LINE)
             const last = selectedLumens[selectedLumens.length - 1];
             const rowDiff = lumen.row - last.row;
             const colDiff = lumen.col - last.col;
 
-            // Ensure it's an adjacent square
             if (Math.abs(rowDiff) <= 1 && Math.abs(colDiff) <= 1 && !(rowDiff === 0 && colDiff === 0)) {
               if (selectedLumens.length === 1) {
-                // Lock in the direction on the second block
+                // Lock the direction on the 2nd piece
                 currentDirection = { r: rowDiff, c: colDiff };
                 addLumenToChain(scene, lumen);
               } else {
-                // For 3rd block onwards, it MUST match the locked direction
+                // Enforce the locked direction for the 3rd piece onwards
                 if (rowDiff === currentDirection.r && colDiff === currentDirection.c) {
                   addLumenToChain(scene, lumen);
                 }
@@ -592,8 +603,7 @@ function endConnection(scene) {
     score += selectedLumens.length * 25; updateScoreUI(); playPopSound(); 
 
     const combo = selectedLumens.length;
-    // Reduced camera shake
-    if (combo >= 4) scene.cameras.main.shake(100, 0.003);
+    if (combo >= 4) scene.cameras.main.shake(100, 0.003); 
 
     selectedLumens.forEach((lumen) => {
       if (lumen.floatTween) lumen.floatTween.stop();
@@ -633,7 +643,8 @@ function applyGravity(scene) {
 
     for (let i = 0; i < emptySlots; i++) {
       let r = emptySlots - 1 - i;
-      let type = Phaser.Math.Between(0, LUMEN_CONFIGS.length - 1); let cfg = LUMEN_CONFIGS[type];
+      let type = getSmartColor(r, c); 
+      let cfg = LUMEN_CONFIGS[type];
       let targetX = BOARD_OFFSET_X + c * TILE_SIZE + TILE_SIZE / 2; let targetY = BOARD_OFFSET_Y + r * TILE_SIZE + TILE_SIZE / 2;
       let sprite = scene.add.image(targetX, BOARD_OFFSET_Y - (i + 1) * TILE_SIZE, `${cfg.name}_closed`).setDepth(2);
       let lumen = { sprite, type, name: cfg.name, color: cfg.color, row: r, col: c, baseY: targetY, floatTween: null };
@@ -651,6 +662,6 @@ function applyGravity(scene) {
   
   scene.time.delayedCall(longestAnimation + 100, () => { 
     isAnimating = false; 
-    checkDeadlock(scene); // Verify the board is playable after falling
+    checkDeadlock(scene);
   });
 }
