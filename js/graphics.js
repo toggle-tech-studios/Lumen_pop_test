@@ -9,15 +9,14 @@ function generateKidFriendlyBackground(scene) {
   
   // 1. Deep Space Background Gradient
   const sky = ctx.createLinearGradient(0, 0, 0, h);
-  sky.addColorStop(0, '#10052b'); // Very dark purple at top
-  sky.addColorStop(0.5, '#0b1035'); // Dark navy blue in middle
-  sky.addColorStop(1, '#1a0b2e'); // Deep purple at bottom
+  sky.addColorStop(0, '#10052b'); // Very dark purple
+  sky.addColorStop(0.5, '#0b1035'); // Dark navy
+  sky.addColorStop(1, '#1a0b2e'); // Deep purple
   ctx.fillStyle = sky; 
   ctx.fillRect(0, 0, w, h);
 
-  // 2. Draw Tiny Twinkling Background Stars (Stardust)
+  // 2. Twinkling Stardust
   for(let i = 0; i < 150; i++) {
-    // Randomize colors between white, light pink, and cyan
     let rand = Math.random();
     if(rand < 0.33) ctx.fillStyle = '#ffffff';
     else if(rand < 0.66) ctx.fillStyle = '#fbcfe8';
@@ -30,28 +29,25 @@ function generateKidFriendlyBackground(scene) {
   }
   ctx.globalAlpha = 1.0;
 
-  // 3. Magical Comet Swooshes (Like the Logo)
+  // 3. Magical Comet Swooshes
   ctx.save();
   ctx.lineCap = 'round';
-  
-  // Top Blue Swoosh
   ctx.beginPath();
   ctx.moveTo(-50, 200);
   ctx.bezierCurveTo(200, 150, 400, 250, 700, 100);
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)'; // Faint Cyan
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.15)'; // Cyan
   ctx.lineWidth = 6;
   ctx.stroke();
 
-  // Bottom Pink/Purple Swoosh
   ctx.beginPath();
   ctx.moveTo(700, 900);
   ctx.bezierCurveTo(450, 850, 200, 1000, -50, 950);
-  ctx.strokeStyle = 'rgba(192, 132, 252, 0.2)'; // Faint Purple
+  ctx.strokeStyle = 'rgba(192, 132, 252, 0.15)'; // Purple
   ctx.lineWidth = 8;
   ctx.stroke();
   ctx.restore();
 
-  // 4. Draw Glowing 4-Point Stars (Like the central logo star)
+  // 4. Glowing 4-Point Stars
   function drawGlowingStar(x, y, size, color) {
     ctx.save();
     ctx.translate(x, y);
@@ -69,11 +65,11 @@ function generateKidFriendlyBackground(scene) {
     ctx.restore();
   }
 
-  drawGlowingStar(120, 150, 25, '#fde047'); // Yellow glow
-  drawGlowingStar(550, 280, 20, '#38bdf8'); // Cyan glow
-  drawGlowingStar(80, 750, 15, '#f472b6');  // Pink glow
-  drawGlowingStar(500, 950, 30, '#c084fc'); // Purple glow
-  drawGlowingStar(330, 60, 12, '#ffffff');  // White glow
+  drawGlowingStar(120, 150, 25, '#fde047'); 
+  drawGlowingStar(550, 280, 20, '#38bdf8'); 
+  drawGlowingStar(80, 750, 15, '#f472b6');  
+  drawGlowingStar(500, 950, 30, '#c084fc'); 
+  drawGlowingStar(330, 60, 12, '#ffffff');  
   
   scene.textures.addCanvas('bg', canvas);
 }
@@ -111,6 +107,7 @@ function createCanvasTexture(scene, cfg, isOpen) {
   const grad = ctx.createLinearGradient(0, -30, 0, 30);
   grad.addColorStop(0, cfg.glow); grad.addColorStop(0.3, cfg.light); grad.addColorStop(1, cfg.base);
   ctx.fillStyle = grad; ctx.fill();
+  
   ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2.5; ctx.stroke();
   ctx.shadowBlur = 0; ctx.save(); ctx.clip();
   ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.beginPath(); ctx.ellipse(0, -18, 18, 10, 0, 0, Math.PI * 2); ctx.fill();
@@ -161,15 +158,19 @@ function generateBoosterIcons(scene) {
   scene.textures.addCanvas('icon_burst', c3);
 }
 
+// BUG-FREE UI DRAWING (No stroke methods!)
 function buildTopUI(scene) {
   const ui = scene.add.graphics().setDepth(5);
+  
+  // Top Banner
+  ui.fillStyle(0xfbcfe8, 1); ui.fillRoundedRect(27, 21, 606, 102, 26); // White border
+  ui.fillStyle(0x4a044e, 1); ui.fillRoundedRect(30, 24, 600, 96, 24); // Inner bg
+
   const drawPanel = (x, w, title, val, valColor) => {
     ui.fillStyle(0x701a75, 1); ui.fillRoundedRect(x, 40, w, 66, 16);
     scene.add.text(x + w/2, 58, title, { fontSize: '11px', fontStyle: 'bold', color: '#f9a8d4', letterSpacing: 1 }).setOrigin(0.5).setDepth(6);
     return scene.add.text(x + w/2, 82, val, { fontSize: '26px', fontStyle: 'bold', color: valColor }).setOrigin(0.5).setDepth(6);
   };
-  ui.fillStyle(0x4a044e, 0.9); ui.fillRoundedRect(30, 24, 600, 96, 24);
-  ui.lineStyle(3, 0xfbcfe8, 1); ui.strokeRoundedRect(30, 24, 600, 96, 24);
 
   drawPanel(44, 110, 'LEVEL', '1', '#FFFFFF');
   drawPanel(172, 316, 'TARGET', `${TARGET_SCORE}`, '#FFFFFF');
@@ -179,15 +180,20 @@ function buildTopUI(scene) {
 function buildProgressBar(scene) {
   scoreText = scene.add.text(48, 128, 'SCORE: 0', { fontSize: '16px', fontStyle: 'bold', color: '#FFFFFF' }).setDepth(6);
   const ui = scene.add.graphics().setDepth(5);
-  ui.fillStyle(0x4a044e, 0.9); ui.fillRoundedRect(42, 154, 576, 16, 8);
-  ui.lineStyle(1.5, 0xfbcfe8, 1); ui.strokeRoundedRect(42, 154, 576, 16, 8);
+  
+  // Progress Bar BG
+  ui.fillStyle(0xfbcfe8, 1); ui.fillRoundedRect(40, 152, 580, 20, 10); // White border
+  ui.fillStyle(0x4a044e, 1); ui.fillRoundedRect(42, 154, 576, 16, 8); // Inner bg
+  
   progressBar = scene.add.graphics().setDepth(6);
   
+  // Draw bug-free star targets
   [0.33, 0.66, 1.0].forEach((pct) => {
     const starX = 42 + 576 * pct, starY = 162;
-    const starBg = scene.add.circle(starX, starY, 14, 0x701a75).setStrokeStyle(2, 0xfbcfe8).setDepth(7);
-    const starGlyph = scene.add.text(starX, starY - 1, '★', { fontSize: '14px', color: '#fbcfe8' }).setOrigin(0.5).setDepth(8);
-    starIcons.push({ bg: starBg, text: starGlyph, unlocked: false, threshold: TARGET_SCORE * pct, scene: scene });
+    const starBgOuter = scene.add.circle(starX, starY, 16, 0xfbcfe8).setDepth(7);
+    const starBgInner = scene.add.circle(starX, starY, 14, 0x701a75).setDepth(8);
+    const starGlyph = scene.add.text(starX, starY - 1, '★', { fontSize: '14px', color: '#fbcfe8' }).setOrigin(0.5).setDepth(9);
+    starIcons.push({ bgOuter: starBgOuter, bgInner: starBgInner, text: starGlyph, unlocked: false, threshold: TARGET_SCORE * pct, scene: scene });
   });
 }
 
@@ -195,15 +201,19 @@ function updateScoreUI() {
   scoreText.setText(`SCORE: ${score}`);
   progressBar.clear();
   const fillWidth = Math.min(576, (score / TARGET_SCORE) * 576);
-  if (fillWidth > 0) { progressBar.fillStyle(0xFCD34D, 1); progressBar.fillRoundedRect(42, 154, fillWidth, 16, 8); }
+  if (fillWidth > 0) { 
+      progressBar.fillStyle(0xFCD34D, 1); 
+      progressBar.fillRoundedRect(42, 154, fillWidth, 16, 8); 
+  }
 
   starIcons.forEach(star => {
     if (!star.unlocked && score >= star.threshold) {
       star.unlocked = true;
-      star.bg.setFillStyle(0xFBBF24).setStrokeStyle(2, 0xFFFFFF);
+      star.bgOuter.setFillStyle(0xFFFFFF);
+      star.bgInner.setFillStyle(0xFBBF24);
       star.text.setColor('#FFFFFF');
-      star.scene.tweens.add({ targets: [star.bg, star.text], scale: 1.5, duration: 150, yoyo: true, ease: 'Back.easeOut' });
-      createBurst(star.scene, star.bg.x, star.bg.y, 0xFBBF24, 6, 40);
+      star.scene.tweens.add({ targets: [star.bgOuter, star.bgInner, star.text], scale: 1.5, duration: 150, yoyo: true, ease: 'Back.easeOut' });
+      createBurst(star.scene, star.bgOuter.x, star.bgOuter.y, 0xFBBF24, 6, 40);
     }
   });
 
@@ -222,25 +232,30 @@ function drawPinkBoardGrid(scene) {
   const boardX = BOARD_OFFSET_X - 8;
   const boardY = BOARD_OFFSET_Y - 8;
 
-  bg.fillStyle(0x4a044e, 0.85); bg.fillRoundedRect(boardX, boardY, boardW, boardH, 24);
-  bg.lineStyle(4, 0xfbcfe8, 1); bg.strokeRoundedRect(boardX, boardY, boardW, boardH, 24);
+  // Main board background
+  bg.fillStyle(0xfbcfe8, 1); bg.fillRoundedRect(boardX - 4, boardY - 4, boardW + 8, boardH + 8, 28);
+  bg.fillStyle(0x4a044e, 1); bg.fillRoundedRect(boardX, boardY, boardW, boardH, 24);
 
+  // Individual grid cells
   for (let r = 0; r < GRID_ROWS; r++) {
     for (let c = 0; c < GRID_COLS; c++) {
       const gap = 4;
       const cellX = BOARD_OFFSET_X + c * TILE_SIZE + gap;
       const cellY = BOARD_OFFSET_Y + r * TILE_SIZE + gap;
       const size = TILE_SIZE - (gap * 2);
-      bg.fillStyle(0xbe185d, 0.6); bg.fillRoundedRect(cellX, cellY, size, size, 14);
-      bg.lineStyle(2, 0xf472b6, 0.9); bg.strokeRoundedRect(cellX, cellY, size, size, 14);
+      
+      bg.fillStyle(0xf472b6, 0.9); bg.fillRoundedRect(cellX - 2, cellY - 2, size + 4, size + 4, 16);
+      bg.fillStyle(0xbe185d, 1); bg.fillRoundedRect(cellX, cellY, size, size, 14);
     }
   }
 }
 
 function buildBoosterDock(scene) {
   const ui = scene.add.graphics().setDepth(5);
-  ui.fillStyle(0x4a044e, 0.9); ui.fillRoundedRect(42, 940, 576, 96, 24);
-  ui.lineStyle(3, 0xfbcfe8, 1); ui.strokeRoundedRect(42, 940, 576, 96, 24);
+  
+  // Booster Panel BG
+  ui.fillStyle(0xfbcfe8, 1); ui.fillRoundedRect(39, 937, 582, 102, 26);
+  ui.fillStyle(0x4a044e, 1); ui.fillRoundedRect(42, 940, 576, 96, 24);
 
   const boosters = [ 
     { name: 'SHUFFLE', icon: 'icon_shuffle', cost: 200, action: () => applyShuffle(scene) }, 
@@ -254,8 +269,11 @@ function buildBoosterDock(scene) {
     const btnGfx = scene.add.graphics().setDepth(6);
     
     const drawBtn = (isDown) => {
-      btnGfx.clear(); btnGfx.fillStyle(isDown ? 0xbe185d : 0x701a75, 1); btnGfx.fillRoundedRect(btnX - 75, btnY - 35, 150, 70, 16);
-      btnGfx.lineStyle(2, 0xf9a8d4, 1); btnGfx.strokeRoundedRect(btnX - 75, btnY - 35, 150, 70, 16);
+      btnGfx.clear(); 
+      // Button Border
+      btnGfx.fillStyle(0xf9a8d4, 1); btnGfx.fillRoundedRect(btnX - 77, btnY - 37, 154, 74, 18);
+      // Button Inner
+      btnGfx.fillStyle(isDown ? 0xbe185d : 0x701a75, 1); btnGfx.fillRoundedRect(btnX - 75, btnY - 35, 150, 70, 16);
     };
     drawBtn(false);
 
