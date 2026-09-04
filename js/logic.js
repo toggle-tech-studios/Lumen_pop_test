@@ -62,7 +62,8 @@ function applyBurst(scene) {
 
 // --- CORE GRID LOGIC ---
 function getSmartColor(r, c) {
-  if (Math.random() < 0.45) {
+  // CLUSTERING INCREASED TO 65%: This guarantees huge, obvious chains for early levels!
+  if (Math.random() < 0.65) {
       let neighbors = [];
       if (r > 0 && board[r-1][c] && board[r-1][c].type !== FUSION_ORB_TYPE) neighbors.push(board[r-1][c].type);
       if (c > 0 && board[r][c-1] && board[r][c-1].type !== FUSION_ORB_TYPE) neighbors.push(board[r][c-1].type);
@@ -83,8 +84,7 @@ function spawnSpecificLumen(scene, r, c, type) {
 }
 
 function spawnGrid(scene) {
-  gameState = 'PLAYING'; // Reset state at the start of a new level!
-  
+  gameState = 'PLAYING'; 
   for (let r = 0; r < GRID_ROWS; r++) {
     board[r] = [];
     for (let c = 0; c < GRID_COLS; c++) {
@@ -411,14 +411,20 @@ function applyGravity(scene) {
     }
   }
 
-  // --- WIN/LOSS EVALUATION ---
+  // --- IMMEDIATE WIN/LOSS EVALUATION ---
   scene.time.delayedCall(longestAnimation + 120, () => {
     isAnimating = false;
     
-    // Check if the player has run out of moves
-    if (movesRemaining <= 0) {
+    // 1. Did they reach the score early? INSTANT WIN!
+    if (score >= TARGET_SCORE) {
       triggerGameOver(scene);
-    } else {
+    } 
+    // 2. Did they run out of moves before reaching it? LOSS.
+    else if (movesRemaining <= 0) {
+      triggerGameOver(scene);
+    } 
+    // 3. Otherwise, keep playing!
+    else {
       checkDeadlock(scene);
     }
   });
@@ -428,20 +434,21 @@ function applyGravity(scene) {
 function triggerGameOver(scene) {
   gameState = 'GAME_OVER';
 
-  // Calculate stars based on score
+  // Stars are now based on how efficiently you finished! (How many moves left over)
   let stars = 0;
-  if (score >= TARGET_SCORE) stars = 3;
-  else if (score >= TARGET_SCORE * 0.66) stars = 2;
-  else if (score >= TARGET_SCORE * 0.33) stars = 1;
+  if (score >= TARGET_SCORE) {
+      stars = 1; // Completed
+      if (movesRemaining >= 3) stars = 2; // Finished fast
+      if (movesRemaining >= 6) stars = 3; // Finished incredibly fast!
+  }
 
   let isWin = stars > 0;
 
-  // Save Progress using config.js functionality
+  // Save Progress
   if (isWin) {
     saveLevelProgress(currentLevel, score, stars);
   }
 
-  // Show the End Screen
   showEndScreen(scene, isWin, stars, score);
 }
 
@@ -494,11 +501,10 @@ function showEndScreen(scene, isWin, stars, finalScore) {
   btnContainer.on('pointerdown', () => btnContainer.setScale(0.95));
   btnContainer.on('pointerup', () => {
      btnContainer.setScale(1);
-     scene.scene.start('LevelSelectScene'); // Transitions smoothly back to the Level Map!
+     scene.scene.start('LevelSelectScene'); 
   });
 
   panelContainer.add(btnContainer);
 
-  // Pop-in animation
   scene.tweens.add({ targets: panelContainer, scaleX: 1, scaleY: 1, duration: 400, ease: 'Back.easeOut' });
 }
