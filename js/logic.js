@@ -2,6 +2,7 @@
 
 // --- BOOSTER ACTIONS ---
 function applyShuffle(scene) {
+  if (gameState !== 'PLAYING') return;
   score -= 200; updateScoreUI(); playPopSound();
   for(let r=0; r<GRID_ROWS; r++){
     for(let c=0; c<GRID_COLS; c++){
@@ -19,6 +20,7 @@ function applyShuffle(scene) {
 }
 
 function applyBomb(scene) {
+  if (gameState !== 'PLAYING') return;
   isAnimating = true; score -= 400; updateScoreUI(); playPopSound();
   let tr = Phaser.Math.Between(1, GRID_ROWS-2); 
   let tc = Phaser.Math.Between(1, GRID_COLS-2);
@@ -39,6 +41,7 @@ function applyBomb(scene) {
 }
 
 function applyBurst(scene) {
+  if (gameState !== 'PLAYING') return;
   isAnimating = true; score -= 600; updateScoreUI(); playPopSound();
   let targetType = Phaser.Math.Between(0, ACTIVE_COLORS - 1);
   for(let r=0; r<GRID_ROWS; r++){
@@ -80,6 +83,8 @@ function spawnSpecificLumen(scene, r, c, type) {
 }
 
 function spawnGrid(scene) {
+  gameState = 'PLAYING'; // Reset state at the start of a new level!
+  
   for (let r = 0; r < GRID_ROWS; r++) {
     board[r] = [];
     for (let c = 0; c < GRID_COLS; c++) {
@@ -117,30 +122,20 @@ function checkDeadlock(scene) {
 
 function startFloating(scene, lumen) {
   if (!lumen || !lumen.sprite) return;
-  if (lumen.floatTween) {
-    lumen.floatTween.stop();
-    lumen.floatTween = null;
-  }
+  if (lumen.floatTween) { lumen.floatTween.stop(); lumen.floatTween = null; }
   scene.tweens.killTweensOf(lumen.sprite);
   lumen.sprite.setScale(1.0);
   lumen.sprite.y = lumen.baseY;
 
   let floatDist = lumen.type === FUSION_ORB_TYPE ? 6 : 4;
   lumen.floatTween = scene.tweens.add({
-    targets: lumen.sprite, 
-    y: lumen.baseY - floatDist, 
-    scaleX: 1.02, 
-    scaleY: 0.98,
-    duration: Phaser.Math.Between(1500, 2000), 
-    delay: Phaser.Math.Between(0, 800), 
-    yoyo: true, 
-    repeat: -1, 
-    ease: 'Sine.easeInOut'
+    targets: lumen.sprite, y: lumen.baseY - floatDist, scaleX: 1.02, scaleY: 0.98,
+    duration: Phaser.Math.Between(1500, 2000), delay: Phaser.Math.Between(0, 800), yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
   });
 }
 
 function triggerRandomPeek(scene) {
-  if (isAnimating) return;
+  if (isAnimating || gameState !== 'PLAYING') return;
   const r = Phaser.Math.Between(0, GRID_ROWS - 1), c = Phaser.Math.Between(0, GRID_COLS - 1);
   const lumen = board[r][c];
   if (lumen && lumen.type !== FUSION_ORB_TYPE && !selectedLumens.includes(lumen)) {
@@ -153,7 +148,7 @@ function triggerRandomPeek(scene) {
 
 // --- TOUCH & SELECTION CONTROLS ---
 function handlePointerMove(scene, pointer) {
-  if (!pointer.isDown || isAnimating) return;
+  if (!pointer.isDown || isAnimating || gameState !== 'PLAYING') return;
 
   for (let r = 0; r < GRID_ROWS; r++) {
     for (let c = 0; c < GRID_COLS; c++) {
@@ -164,16 +159,12 @@ function handlePointerMove(scene, pointer) {
       if (dist < 45) { 
         if (!isDragging) {
           if (lumen.type === FUSION_ORB_TYPE) return; 
-          isDragging = true; 
-          currentType = lumen.type; 
-          currentDirection = null; 
-          addLumenToChain(scene, lumen);
+          isDragging = true; currentType = lumen.type; currentDirection = null; addLumenToChain(scene, lumen);
         } else {
           if (selectedLumens.length > 1 && lumen === selectedLumens[selectedLumens.length - 2]) {
             const removed = selectedLumens.pop(); 
             if(selectedLumens.length === 1) currentDirection = null; 
-            resetLumenVisual(scene, removed); 
-            drawLine();
+            resetLumenVisual(scene, removed); drawLine();
           } else if (!selectedLumens.includes(lumen)) {
             const last = selectedLumens[selectedLumens.length - 1];
             if (last.type === FUSION_ORB_TYPE) return;
@@ -202,15 +193,10 @@ function handlePointerMove(scene, pointer) {
 
 function addLumenToChain(scene, lumen) {
   selectedLumens.push(lumen);
-  if (lumen.floatTween) {
-    lumen.floatTween.stop();
-    lumen.floatTween = null;
-  }
+  if (lumen.floatTween) { lumen.floatTween.stop(); lumen.floatTween = null; }
   scene.tweens.killTweensOf(lumen.sprite);
   
-  if (lumen.type !== FUSION_ORB_TYPE) {
-    lumen.sprite.setTexture(`${lumen.name}_open`);
-  }
+  if (lumen.type !== FUSION_ORB_TYPE) lumen.sprite.setTexture(`${lumen.name}_open`);
   
   scene.tweens.add({ targets: lumen.sprite, scaleX: 1.25, scaleY: 1.25, duration: 150, ease: 'Back.easeOut' });
   
@@ -223,19 +209,13 @@ function resetLumenVisual(scene, lumen) {
   if (lumen.type !== FUSION_ORB_TYPE) lumen.sprite.setTexture(`${lumen.name}_closed`);
   scene.tweens.killTweensOf(lumen.sprite);
   scene.tweens.add({ 
-    targets: lumen.sprite, 
-    scaleX: 1.0, 
-    scaleY: 1.0, 
-    y: lumen.baseY,
-    duration: 150, 
-    ease: 'Quad.easeOut', 
-    onComplete: () => startFloating(scene, lumen) 
+    targets: lumen.sprite, scaleX: 1.0, scaleY: 1.0, y: lumen.baseY,
+    duration: 150, ease: 'Quad.easeOut', onComplete: () => startFloating(scene, lumen) 
   });
 }
 
 function drawLine() {
-  lineLayer.clear(); 
-  lineGlowLayer.clear();
+  lineLayer.clear(); lineGlowLayer.clear();
   if (selectedLumens.length < 2) return;
   
   const isFusion = selectedLumens[selectedLumens.length - 1].type === FUSION_ORB_TYPE;
@@ -243,19 +223,16 @@ function drawLine() {
   const intensity = Math.min(selectedLumens.length / 6, 1);
 
   lineGlowLayer.lineStyle(16 + (intensity * 4), activeColor, 0.4); 
-  lineGlowLayer.beginPath(); 
-  lineGlowLayer.moveTo(selectedLumens[0].sprite.x, selectedLumens[0].sprite.y);
+  lineGlowLayer.beginPath(); lineGlowLayer.moveTo(selectedLumens[0].sprite.x, selectedLumens[0].sprite.y);
   
   lineLayer.lineStyle(8 + (intensity * 2), 0xFFFFFF, 0.9); 
-  lineLayer.beginPath(); 
-  lineLayer.moveTo(selectedLumens[0].sprite.x, selectedLumens[0].sprite.y);
+  lineLayer.beginPath(); lineLayer.moveTo(selectedLumens[0].sprite.x, selectedLumens[0].sprite.y);
 
   for (let i = 1; i < selectedLumens.length; i++) {
     lineGlowLayer.lineTo(selectedLumens[i].sprite.x, selectedLumens[i].sprite.y);
     lineLayer.lineTo(selectedLumens[i].sprite.x, selectedLumens[i].sprite.y);
   }
-  lineGlowLayer.strokePath(); 
-  lineLayer.strokePath();
+  lineGlowLayer.strokePath(); lineLayer.strokePath();
 }
 
 function createBurst(scene, x, y, color, count, power) {
@@ -263,14 +240,8 @@ function createBurst(scene, x, y, color, count, power) {
     const p = scene.add.image(x, y, 'particle').setTint(color).setDepth(11).setScale(Math.random() * 0.8 + 0.4);
     const angle = Math.random() * Math.PI * 2, dist = Math.random() * power + (power * 0.5);
     scene.tweens.add({ 
-      targets: p, 
-      x: x + Math.cos(angle) * dist, 
-      y: y + Math.sin(angle) * dist, 
-      alpha: 0, 
-      scale: 0, 
-      duration: Math.random() * 300 + 300, 
-      ease: 'Cubic.easeOut', 
-      onComplete: () => p.destroy() 
+      targets: p, x: x + Math.cos(angle) * dist, y: y + Math.sin(angle) * dist, alpha: 0, scale: 0, 
+      duration: Math.random() * 300 + 300, ease: 'Cubic.easeOut', onComplete: () => p.destroy() 
     });
   }
 }
@@ -278,10 +249,7 @@ function createBurst(scene, x, y, color, count, power) {
 // --- COMBO RESOLUTION ---
 function endConnection(scene) {
   if (!isDragging) return;
-  isDragging = false; 
-  lineLayer.clear(); 
-  lineGlowLayer.clear(); 
-  currentDirection = null;
+  isDragging = false; lineLayer.clear(); lineGlowLayer.clear(); currentDirection = null;
 
   const combo = selectedLumens.length;
   const hasFusionOrb = combo > 0 && selectedLumens[combo - 1].type === FUSION_ORB_TYPE;
@@ -306,11 +274,7 @@ function endConnection(scene) {
         if (lumen.floatTween) { lumen.floatTween.stop(); lumen.floatTween = null; }
         scene.tweens.killTweensOf(lumen.sprite);
         scene.tweens.add({
-          targets: lumen.sprite, 
-          scaleX: 1.4, 
-          scaleY: 1.4, 
-          duration: 80, 
-          yoyo: true,
+          targets: lumen.sprite, scaleX: 1.4, scaleY: 1.4, duration: 80, yoyo: true,
           onComplete: () => { 
             createBurst(scene, lumen.sprite.x, lumen.sprite.y, lumen.color, Math.min(6 + combo, 15), 60); 
             lumen.sprite.destroy(); 
@@ -323,14 +287,12 @@ function endConnection(scene) {
         board[lastRow][lastCol] = spawnSpecificLumen(scene, lastRow, lastCol, FUSION_ORB_TYPE);
         createBurst(scene, board[lastRow][lastCol].sprite.x, board[lastRow][lastCol].sprite.y, 0xc084fc, 20, 80);
       }
-
       scene.time.delayedCall(200, () => applyGravity(scene));
     }
   } else { 
     selectedLumens.forEach(lumen => resetLumenVisual(scene, lumen)); 
   }
-  selectedLumens = []; 
-  currentType = null;
+  selectedLumens = []; currentType = null;
 }
 
 // --- FUSION SEQUENCE ---
@@ -345,14 +307,8 @@ function triggerFusionSequence(scene, colorType, chain) {
       if (lumen.floatTween) { lumen.floatTween.stop(); lumen.floatTween = null; }
       scene.tweens.killTweensOf(lumen.sprite);
       scene.tweens.add({
-        targets: lumen.sprite, 
-        x: orb.sprite.x, 
-        y: orb.sprite.y, 
-        scaleX: 0, 
-        scaleY: 0,
-        duration: 350, 
-        delay: index * 80, 
-        ease: 'Cubic.easeIn',
+        targets: lumen.sprite, x: orb.sprite.x, y: orb.sprite.y, scaleX: 0, scaleY: 0,
+        duration: 350, delay: index * 80, ease: 'Cubic.easeIn',
         onComplete: () => lumen.sprite.destroy()
       });
     }
@@ -361,12 +317,8 @@ function triggerFusionSequence(scene, colorType, chain) {
   if (orb.floatTween) { orb.floatTween.stop(); orb.floatTween = null; }
   scene.tweens.killTweensOf(orb.sprite);
   scene.tweens.add({
-    targets: orb.sprite, 
-    scaleX: 1.8, 
-    scaleY: 1.8, 
-    angle: 180,
-    duration: 1000, 
-    ease: 'Sine.easeInOut'
+    targets: orb.sprite, scaleX: 1.8, scaleY: 1.8, angle: 180,
+    duration: 1000, ease: 'Sine.easeInOut'
   });
 
   let darkOverlay = scene.add.rectangle(330, 550, 660, 1100, 0x000000, 0).setDepth(1);
@@ -408,20 +360,13 @@ function applyGravity(scene) {
 
   for (let c = 0; c < GRID_COLS; c++) {
     let emptySlots = 0;
-
-    // Shift existing downward
     for (let r = GRID_ROWS - 1; r >= 0; r--) {
       if (board[r][c] === null) {
         emptySlots++;
       } else if (emptySlots > 0) {
-        let piece = board[r][c];
-        let newRow = r + emptySlots;
-        board[newRow][c] = piece;
-        board[r][c] = null;
-        piece.row = newRow;
-
-        const targetY = BOARD_OFFSET_Y + newRow * TILE_SIZE + TILE_SIZE / 2;
-        piece.baseY = targetY;
+        let piece = board[r][c]; let newRow = r + emptySlots;
+        board[newRow][c] = piece; board[r][c] = null; piece.row = newRow;
+        const targetY = BOARD_OFFSET_Y + newRow * TILE_SIZE + TILE_SIZE / 2; piece.baseY = targetY;
 
         if (piece.floatTween) { piece.floatTween.stop(); piece.floatTween = null; }
         scene.tweens.killTweensOf(piece.sprite);
@@ -430,26 +375,15 @@ function applyGravity(scene) {
         if (duration > longestAnimation) longestAnimation = duration;
 
         scene.tweens.add({
-          targets: piece.sprite,
-          y: targetY,
-          duration: duration,
-          ease: 'Cubic.easeIn',
+          targets: piece.sprite, y: targetY, duration: duration, ease: 'Cubic.easeIn',
           onComplete: () => {
             playBounceSound();
-            scene.tweens.add({
-              targets: piece.sprite,
-              scaleX: 1.12,
-              scaleY: 0.88,
-              duration: 50,
-              yoyo: true,
-              onComplete: () => startFloating(scene, piece)
-            });
+            scene.tweens.add({ targets: piece.sprite, scaleX: 1.12, scaleY: 0.88, duration: 50, yoyo: true, onComplete: () => startFloating(scene, piece) });
           }
         });
       }
     }
 
-    // Refill newly generated slots from the top of that specific column
     for (let i = 0; i < emptySlots; i++) {
       let r = emptySlots - 1 - i;
       let type = getSmartColor(r, c);
@@ -459,7 +393,6 @@ function applyGravity(scene) {
       let cfg = type === FUSION_ORB_TYPE ? {name: 'fusion_orb', color: 0xc084fc, faceY: 0} : LUMEN_CONFIGS[type];
       let tex = type === FUSION_ORB_TYPE ? 'fusion_orb' : `${cfg.name}_closed`;
       
-      // Start above the board top for this column
       let startY = BOARD_OFFSET_Y - ((i + 1) * TILE_SIZE);
       let sprite = scene.add.image(targetX, startY, tex).setDepth(2);
       let lumen = { sprite, type, name: cfg.name, color: cfg.color, row: r, col: c, baseY: targetY, floatTween: null };
@@ -469,27 +402,103 @@ function applyGravity(scene) {
       if (duration > longestAnimation) longestAnimation = duration;
 
       scene.tweens.add({
-        targets: sprite,
-        y: targetY,
-        duration: duration,
-        ease: 'Cubic.easeIn',
+        targets: sprite, y: targetY, duration: duration, ease: 'Cubic.easeIn',
         onComplete: () => {
           playBounceSound();
-          scene.tweens.add({
-            targets: sprite,
-            scaleX: 1.12,
-            scaleY: 0.88,
-            duration: 50,
-            yoyo: true,
-            onComplete: () => startFloating(scene, lumen)
-          });
+          scene.tweens.add({ targets: sprite, scaleX: 1.12, scaleY: 0.88, duration: 50, yoyo: true, onComplete: () => startFloating(scene, lumen) });
         }
       });
     }
   }
 
+  // --- WIN/LOSS EVALUATION ---
   scene.time.delayedCall(longestAnimation + 120, () => {
     isAnimating = false;
-    checkDeadlock(scene);
+    
+    // Check if the player has run out of moves
+    if (movesRemaining <= 0) {
+      triggerGameOver(scene);
+    } else {
+      checkDeadlock(scene);
+    }
   });
+}
+
+// --- VICTORY & DEFEAT HANDLING ---
+function triggerGameOver(scene) {
+  gameState = 'GAME_OVER';
+
+  // Calculate stars based on score
+  let stars = 0;
+  if (score >= TARGET_SCORE) stars = 3;
+  else if (score >= TARGET_SCORE * 0.66) stars = 2;
+  else if (score >= TARGET_SCORE * 0.33) stars = 1;
+
+  let isWin = stars > 0;
+
+  // Save Progress using config.js functionality
+  if (isWin) {
+    saveLevelProgress(currentLevel, score, stars);
+  }
+
+  // Show the End Screen
+  showEndScreen(scene, isWin, stars, score);
+}
+
+function showEndScreen(scene, isWin, stars, finalScore) {
+  // Dark overlay
+  let overlay = scene.add.rectangle(330, 550, 660, 1100, 0x000000, 0).setDepth(100).setInteractive();
+  scene.tweens.add({ targets: overlay, fillAlpha: 0.7, duration: 400 });
+
+  // Main UI Panel
+  let panelContainer = scene.add.container(330, 550).setDepth(101).setScale(0);
+  let panel = scene.add.graphics();
+  panel.fillStyle(0xfbcfe8, 1); panel.fillRoundedRect(-204, -224, 408, 448, 34);
+  panel.fillStyle(0x4a044e, 1); panel.fillRoundedRect(-200, -220, 400, 440, 30);
+  panelContainer.add(panel);
+
+  // Win or Lose Title
+  let titleText = isWin ? 'LEVEL COMPLETE!' : 'OUT OF MOVES';
+  let titleColor = isWin ? '#34D399' : '#F43F5E';
+  panelContainer.add(scene.add.text(0, -150, titleText, { fontSize: '36px', fontStyle: 'bold', color: titleColor }).setOrigin(0.5));
+
+  // Draw 3 Stars
+  for (let i = 0; i < 3; i++) {
+    let starColor = i < stars ? '#FCD34D' : '#701a75';
+    let starSize = i === 1 ? '70px' : '50px'; // Middle star is bigger
+    let starY = i === 1 ? -75 : -65;
+    let star = scene.add.text(-70 + (i * 70), starY, '★', { fontSize: starSize, color: starColor }).setOrigin(0.5);
+    panelContainer.add(star);
+  }
+
+  // Show Scores
+  panelContainer.add(scene.add.text(0, 10, 'FINAL SCORE', { fontSize: '20px', color: '#fbcfe8' }).setOrigin(0.5));
+  panelContainer.add(scene.add.text(0, 45, `${finalScore}`, { fontSize: '42px', fontStyle: 'bold', color: '#FFFFFF' }).setOrigin(0.5));
+
+  // Retrieve Best Score to show it
+  let progress = getPlayerProgress();
+  let best = progress.scores[currentLevel] || finalScore;
+  panelContainer.add(scene.add.text(0, 95, `BEST SCORE: ${best}`, { fontSize: '18px', fontStyle: 'italic', color: '#a78bfa' }).setOrigin(0.5));
+
+  // Continue / Try Again Button
+  let btnContainer = scene.add.container(0, 160);
+  let btnGfx = scene.add.graphics();
+  btnGfx.fillStyle(0xfbcfe8, 1); btnGfx.fillRoundedRect(-102, -32, 204, 64, 22);
+  btnGfx.fillStyle(isWin ? 0x059669 : 0xbe185d, 1); btnGfx.fillRoundedRect(-100, -30, 200, 60, 20);
+  let btnText = scene.add.text(0, 0, isWin ? 'CONTINUE' : 'TRY AGAIN', { fontSize: '28px', fontStyle: 'bold', color: '#FFFFFF' }).setOrigin(0.5);
+  
+  btnContainer.add([btnGfx, btnText]);
+  btnContainer.setSize(200, 60);
+  btnContainer.setInteractive({ useHandCursor: true });
+
+  btnContainer.on('pointerdown', () => btnContainer.setScale(0.95));
+  btnContainer.on('pointerup', () => {
+     btnContainer.setScale(1);
+     scene.scene.start('LevelSelectScene'); // Transitions smoothly back to the Level Map!
+  });
+
+  panelContainer.add(btnContainer);
+
+  // Pop-in animation
+  scene.tweens.add({ targets: panelContainer, scaleX: 1, scaleY: 1, duration: 400, ease: 'Back.easeOut' });
 }
