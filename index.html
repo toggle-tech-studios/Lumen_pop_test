@@ -62,7 +62,13 @@
 <body>
   <div id="loading">Summoning Lumens...</div>
   <div id="game-container">
-    <script src="script.js"></script>
+    <!-- Load the game files in this exact order -->
+<script src="js/config.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/graphics.js"></script>
+<script src="js/logic.js"></script>
+<script src="js/main.js"></script>
+
   </div>
 </body>
 </html>
