@@ -160,13 +160,17 @@ class GameScene extends Phaser.Scene {
   }
 }
 
-// Make sure LevelSelectScene is loaded in the config!
+// Ensure the config scales cleanly on all device aspect ratios
 const config = {
   type: Phaser.AUTO,
   width: 660,
   height: 1100,
   backgroundColor: '#10052b',
-  scale: { mode: Phaser.Scale.ENVELOP, autoCenter: Phaser.Scale.CENTER_BOTH },
+  scale: { 
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    parent: document.body
+  },
   scene: [BootScene, PreloadScene, LevelSelectScene, GameScene]
 };
 
