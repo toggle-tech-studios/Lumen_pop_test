@@ -21,46 +21,59 @@ const LUMEN_CONFIGS = [
   { name: 'blaze',   base: '#BE123C', light: '#F43F5E', glow: '#FECDD3', shape: 'flame',   faceY: 7,  color: 0xF43F5E }  
 ];
 
-// LEVEL CONFIGURATION & PROGRESSION
-const TOTAL_LEVELS = 15;
-const LEVELS_DATA = [
-  { level: 1,  target: 1200, moves: 30, colors: 4 },
-  { level: 2,  target: 1800, moves: 28, colors: 4 },
-  { level: 3,  target: 2500, moves: 28, colors: 5 },
-  { level: 4,  target: 3200, moves: 26, colors: 5 },
-  { level: 5,  target: 4000, moves: 25, colors: 5 },
-  { level: 6,  target: 4800, moves: 25, colors: 5 },
-  { level: 7,  target: 5500, moves: 24, colors: 5 },
-  { level: 8,  target: 6200, moves: 24, colors: 6 },
-  { level: 9,  target: 7000, moves: 23, colors: 6 },
-  { level: 10, target: 8000, moves: 22, colors: 6 },
-  { level: 11, target: 9000, moves: 22, colors: 6 },
-  { level: 12, target: 10000, moves: 21, colors: 6 },
-  { level: 13, target: 11500, moves: 20, colors: 6 },
-  { level: 14, target: 13000, moves: 20, colors: 7 },
-  { level: 15, target: 15000, moves: 20, colors: 7 }
-];
+// --- ♾️ INFINITE LEVEL GENERATOR ---
+// This safely generates difficulty for Level 1 or Level 5000 mathematically.
+function getLevelData(level) {
+  let colors = 4; // Start easy with 4 colors
+  if (level > 10) colors = 5;
+  if (level > 25) colors = 6;
+  if (level > 50) colors = 7; // Max colors for crazy difficulty
+
+  // Target score slowly scales up forever
+  let baseTarget = 1000;
+  let target = baseTarget + (level * 350) + (Math.floor(level / 10) * 1000);
+
+  // Moves oscillate and tighten gently so it never becomes mathematically impossible
+  let moves = 30 - Math.floor(level / 4);
+  if (moves < 15) {
+    moves = 15 + Math.floor((level % 10) / 2); // Gives a breather every few levels
+  }
+
+  return { level, target, moves, colors };
+}
 
 let currentLevel = 1;
 let TARGET_SCORE = 1200;
 let ACTIVE_COLORS = 4;
 
-// LocalStorage helpers to save progress
+// --- 💾 SAVE SYSTEM ---
 function getPlayerProgress() {
   const savedLevel = parseInt(localStorage.getItem('lumen_unlocked_level')) || 1;
   const starsData = JSON.parse(localStorage.getItem('lumen_stars_data')) || {};
-  return { unlockedLevel: savedLevel, stars: starsData };
+  const scoresData = JSON.parse(localStorage.getItem('lumen_scores_data')) || {};
+  return { unlockedLevel: savedLevel, stars: starsData, scores: scoresData };
 }
 
-function saveLevelStars(lvl, starsCount) {
+function saveLevelProgress(lvl, score, starsCount) {
   const progress = getPlayerProgress();
-  if (lvl >= progress.unlockedLevel && lvl < TOTAL_LEVELS) {
+  
+  // Unlock next level if we beat the current maximum
+  if (lvl === progress.unlockedLevel && starsCount > 0) {
     localStorage.setItem('lumen_unlocked_level', lvl + 1);
   }
-  const currentBest = progress.stars[lvl] || 0;
-  if (starsCount > currentBest) {
+  
+  // Save best stars
+  const currentBestStars = progress.stars[lvl] || 0;
+  if (starsCount > currentBestStars) {
     progress.stars[lvl] = starsCount;
     localStorage.setItem('lumen_stars_data', JSON.stringify(progress.stars));
+  }
+  
+  // Save best score
+  const currentBestScore = progress.scores[lvl] || 0;
+  if (score > currentBestScore) {
+    progress.scores[lvl] = score;
+    localStorage.setItem('lumen_scores_data', JSON.stringify(progress.scores));
   }
 }
 
@@ -85,6 +98,7 @@ let movesText;
 let progressBar;
 let starIcons = [];
 let isAnimating = false;
+let gameState = 'PLAYING'; // 'PLAYING', 'WON', 'LOST'
 let boosterButtons = []; 
 
 // Global Audio & Scene References
