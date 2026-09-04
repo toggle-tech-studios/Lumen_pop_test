@@ -21,29 +21,28 @@ const LUMEN_CONFIGS = [
   { name: 'blaze',   base: '#BE123C', light: '#F43F5E', glow: '#FECDD3', shape: 'flame',   faceY: 7,  color: 0xF43F5E }  
 ];
 
-// --- ♾️ INFINITE LEVEL GENERATOR ---
-// This safely generates difficulty for Level 1 or Level 5000 mathematically.
+// --- ♾️ INFINITE LEVEL GENERATOR (INTENSE SCALING) ---
 function getLevelData(level) {
-  let colors = 4; // Start easy with 4 colors
+  let colors = 4; // Keeps board very easy/forgiving for early levels
   if (level > 10) colors = 5;
-  if (level > 25) colors = 6;
-  if (level > 50) colors = 7; // Max colors for crazy difficulty
+  if (level > 30) colors = 6;
+  if (level > 60) colors = 7; 
 
-  // Target score slowly scales up forever
-  let baseTarget = 1000;
-  let target = baseTarget + (level * 350) + (Math.floor(level / 10) * 1000);
+  // Massive score jump: Level 1 is 6000, grows by 1500+ every level
+  let baseTarget = 6000;
+  let target = baseTarget + ((level - 1) * 1500) + (Math.floor(level / 5) * 2000);
 
-  // Moves oscillate and tighten gently so it never becomes mathematically impossible
-  let moves = 30 - Math.floor(level / 4);
-  if (moves < 15) {
-    moves = 15 + Math.floor((level % 10) / 2); // Gives a breather every few levels
+  // Intense moves limit: Starts at 25, slowly tightens
+  let moves = 25 - Math.floor(level / 4);
+  if (moves < 14) {
+    moves = 14 + Math.floor((level % 10) / 3); // Gives a breather periodically so it's never impossible
   }
 
   return { level, target, moves, colors };
 }
 
 let currentLevel = 1;
-let TARGET_SCORE = 1200;
+let TARGET_SCORE = 6000;
 let ACTIVE_COLORS = 4;
 
 // --- 💾 SAVE SYSTEM ---
@@ -57,19 +56,16 @@ function getPlayerProgress() {
 function saveLevelProgress(lvl, score, starsCount) {
   const progress = getPlayerProgress();
   
-  // Unlock next level if we beat the current maximum
   if (lvl === progress.unlockedLevel && starsCount > 0) {
     localStorage.setItem('lumen_unlocked_level', lvl + 1);
   }
   
-  // Save best stars
   const currentBestStars = progress.stars[lvl] || 0;
   if (starsCount > currentBestStars) {
     progress.stars[lvl] = starsCount;
     localStorage.setItem('lumen_stars_data', JSON.stringify(progress.stars));
   }
   
-  // Save best score
   const currentBestScore = progress.scores[lvl] || 0;
   if (score > currentBestScore) {
     progress.scores[lvl] = score;
@@ -84,24 +80,21 @@ let isDragging = false;
 let currentType = null;
 let currentDirection = null; 
 
-// Graphics Layers
 let lineLayer;
 let lineGlowLayer;
 let particlesLayer;
 let overlayLayer;
 
-// UI & Gameplay State
 let score = 0;
-let movesRemaining = 30;
+let movesRemaining = 25;
 let scoreText;
 let movesText;
 let progressBar;
 let starIcons = [];
 let isAnimating = false;
-let gameState = 'PLAYING'; // 'PLAYING', 'WON', 'LOST'
+let gameState = 'PLAYING'; 
 let boosterButtons = []; 
 
-// Global Audio & Scene References
 let audioCtx;
 let bgmMusic; 
 let mainScene; 
