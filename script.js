@@ -5,7 +5,6 @@ const TILE_SIZE = 78;
 const BOARD_OFFSET_X = 57;
 const BOARD_OFFSET_Y = 290;
 
-// LEVEL 1 DIFFICULTY: 5 Colors (Combined with Smart Spawning, makes straight lines easy!)
 const ACTIVE_COLORS = 5; 
 
 // ULTRA-BRIGHT LUMEN COLORS
@@ -24,8 +23,11 @@ const config = {
   width: 660,
   height: 1100,
   backgroundColor: '#090d16',
-  scale: { mode: Phaser.Scale.ENVELOP, autoCenter: Phaser.Scale.CENTER_BOTH }, // Fits screen perfectly
-  scene: { create: create }
+  scale: { mode: Phaser.Scale.ENVELOP, autoCenter: Phaser.Scale.CENTER_BOTH },
+  scene: { 
+    preload: preload,
+    create: create 
+  }
 };
 
 const game = new Phaser.Game(config);
@@ -34,51 +36,75 @@ let board = [];
 let selectedLumens = [];
 let isDragging = false;
 let currentType = null;
-let currentDirection = null; // Forces straight-line connections
+let currentDirection = null; 
 let lineLayer, lineGlowLayer, particlesLayer;
 let score = 0, movesRemaining = 35;
 const TARGET_SCORE = 3000;
 let scoreText, movesText, progressBar, starIcons = [];
 let isAnimating = false;
 let boosterButtons = []; 
+let mainScene;
 
-// --- PROCEDURAL AUDIO ENGINE ---
+// --- AUDIO SYSTEM ---
 let audioCtx;
+let bgmMusic; // Holds the MP3 track
 
-function initAudio() {
-  if (audioCtx) return;
-  const AudioContext = window.AudioContext || window.webkitAudioContext;
-  audioCtx = new AudioContext();
-  
-  const notes = [261.63, 329.63, 392.00, 523.25]; 
-  let noteIdx = 0;
-  setInterval(() => {
-    if(!audioCtx) return;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'sine'; osc.frequency.value = notes[noteIdx];
-    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start(); osc.stop(audioCtx.currentTime + 1.5);
-    noteIdx = (noteIdx + 1) % notes.length;
-  }, 600); 
+function preload() {
+  // Load the MP3 file you uploaded to GitHub
+  this.load.audio('gameplayBgm', 'assets/music/homepage.mp3');
 }
 
+function initAudio(scene) {
+  // 1. Initialize Web Audio Context for Procedural SFX
+  if (!audioCtx) {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AudioContext();
+  }
+
+  // 2. Play the MP3 Background Music (only once)
+  if (!bgmMusic) {
+    bgmMusic = scene.sound.add('gameplayBgm', { loop: true, volume: 0.6 });
+    bgmMusic.play();
+  }
+}
+
+// --- MP3 AUDIO DUCKING LOGIC ---
+function duckMusicVolume(duration) {
+  if (!bgmMusic || !bgmMusic.isPlaying || !mainScene) return;
+  
+  // Stop any current fading and instantly drop volume to 15%
+  mainScene.tweens.killTweensOf(bgmMusic);
+  bgmMusic.setVolume(0.15); 
+  
+  // Fade smoothly back to 60% after the sound effect finishes
+  mainScene.tweens.add({
+    targets: bgmMusic,
+    volume: 0.6,
+    delay: duration * 1000, 
+    duration: 400,
+    ease: 'Linear'
+  });
+}
+
+// --- PROCEDURAL SOUND EFFECTS ---
 function playLinkSound(comboLength) {
   if (!audioCtx) return;
+  duckMusicVolume(0.2); // Duck MP3 for the link sound
+
   const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.type = 'sine';
   const notes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00, 1046.50]; 
   osc.frequency.setValueAtTime(notes[Math.min(comboLength - 1, notes.length - 1)], audioCtx.currentTime);
-  gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+  gain.gain.setValueAtTime(0.15, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
   osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.3);
 }
 
 function playPopSound() {
   if (!audioCtx) return;
+  duckMusicVolume(0.4); // Duck MP3 for the pop burst!
+
   const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.type = 'triangle';
   osc.frequency.setValueAtTime(800, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2); 
-  gain.gain.setValueAtTime(0.2, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+  gain.gain.setValueAtTime(0.25, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
   osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.2);
 }
 
@@ -86,13 +112,13 @@ function playBounceSound() {
   if (!audioCtx) return;
   const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.type = 'sine';
   osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(60, audioCtx.currentTime + 0.1);
-  gain.gain.setValueAtTime(0.05, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+  gain.gain.setValueAtTime(0.08, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
   osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.1);
 }
 
-// --- SMART SPAWNING SYSTEM (Makes straight lines easy) ---
+// --- SMART SPAWNING SYSTEM ---
 function getSmartColor(r, c) {
-  // 30% chance to artificially clone a neighbor's color to create easy straight lines!
+  // 30% chance to clone neighbor's color for easy straight-line combos
   if (Math.random() < 0.30) {
       if (r < GRID_ROWS - 1 && board[r+1] && board[r+1][c]) return board[r+1][c].type;
       if (c > 0 && board[r] && board[r][c-1]) return board[r][c-1].type;
@@ -102,36 +128,38 @@ function getSmartColor(r, c) {
 
 // --- MAIN GAME SCENE ---
 function create() {
-  const scene = this;
+  mainScene = this; // Store scene reference globally for audio tweens
   const loadingElement = document.getElementById('loading');
   if (loadingElement) loadingElement.style.display = 'none';
 
-  generateKidFriendlyBackground(scene);
-  generateParticleTexture(scene);
-  generateBoosterIcons(scene);
-  generateAllCanvasTextures(scene);
+  generateKidFriendlyBackground(mainScene);
+  generateParticleTexture(mainScene);
+  generateBoosterIcons(mainScene);
+  generateAllCanvasTextures(mainScene);
 
-  scene.add.image(330, 550, 'bg').setDepth(-10);
+  mainScene.add.image(330, 550, 'bg').setDepth(-10);
 
-  buildTopUI(scene);
-  buildProgressBar(scene);
-  buildBoosterDock(scene);
-  drawPinkBoardGrid(scene);
+  buildTopUI(mainScene);
+  buildProgressBar(mainScene);
+  buildBoosterDock(mainScene);
+  drawPinkBoardGrid(mainScene);
 
-  lineGlowLayer = scene.add.graphics().setDepth(9);
-  lineLayer = scene.add.graphics().setDepth(10);
-  particlesLayer = scene.add.group();
+  lineGlowLayer = mainScene.add.graphics().setDepth(9);
+  lineLayer = mainScene.add.graphics().setDepth(10);
+  particlesLayer = mainScene.add.group();
 
-  spawnGrid(scene);
+  spawnGrid(mainScene);
   updateScoreUI(); 
 
-  scene.time.addEvent({ delay: 1800, loop: true, callback: () => triggerRandomPeek(scene) });
-  scene.input.on('pointerdown', () => initAudio());
-  scene.input.on('pointerup', () => endConnection(scene));
-  scene.input.on('pointermove', (pointer) => handlePointerMove(scene, pointer));
+  mainScene.time.addEvent({ delay: 1800, loop: true, callback: () => triggerRandomPeek(mainScene) });
+  
+  // Unlocks audio and starts the MP3 on the first tap
+  mainScene.input.on('pointerdown', () => initAudio(mainScene));
+  mainScene.input.on('pointerup', () => endConnection(mainScene));
+  mainScene.input.on('pointermove', (pointer) => handlePointerMove(mainScene, pointer));
 }
 
-// --- KID-FRIENDLY BACKGROUND & ASSETS ---
+// --- PROCEDURAL GRAPHICS ---
 function generateKidFriendlyBackground(scene) {
   const canvas = document.createElement('canvas'); canvas.width = 660; canvas.height = 1100;
   const ctx = canvas.getContext('2d'); const w = canvas.width, h = canvas.height;
@@ -209,12 +237,9 @@ function createCanvasTexture(scene, cfg, isOpen) {
   const grad = ctx.createLinearGradient(0, -30, 0, 30);
   grad.addColorStop(0, cfg.glow); grad.addColorStop(0.3, cfg.light); grad.addColorStop(1, cfg.base);
   ctx.fillStyle = grad; ctx.fill();
-  
   ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2.5; ctx.stroke();
-
   ctx.shadowBlur = 0; ctx.save(); ctx.clip();
   ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.beginPath(); ctx.ellipse(0, -18, 18, 10, 0, 0, Math.PI * 2); ctx.fill();
-
   ctx.translate(0, cfg.faceY);
   ctx.fillStyle = 'rgba(255, 110, 140, 0.7)'; ctx.beginPath(); ctx.ellipse(-14, 6, 4.5, 2.5, 0, 0, Math.PI * 2); ctx.ellipse(14, 6, 4.5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
 
@@ -241,7 +266,7 @@ function createCanvasTexture(scene, cfg, isOpen) {
   scene.textures.addCanvas(`${cfg.name}_${isOpen ? 'open' : 'closed'}`, canvas);
 }
 
-// --- PINK THEME UI & BOARD ---
+// --- UI & BOARD ---
 function buildTopUI(scene) {
   const ui = scene.add.graphics().setDepth(5);
   const drawPanel = (x, w, title, val, valColor) => {
@@ -370,7 +395,7 @@ function buildBoosterDock(scene) {
     boosterButtons.push(btnState);
 
     btnZone.on('pointerdown', () => { 
-      initAudio(); 
+      initAudio(scene); 
       if(btnState.canAfford && !isAnimating) {
         drawBtn(true); scene.tweens.add({ targets: [icon, label, costText], scale: 0.9, duration: 80 }); 
       }
@@ -454,21 +479,15 @@ function spawnGrid(scene) {
   checkDeadlock(scene);
 }
 
-// STRICT STRAIGHT-LINE DEADLOCK DETECTION
 function checkDeadlock(scene) {
   let movesExist = false;
-  // Directions: Right, Down, Diagonal-Down-Right, Diagonal-Up-Right
   const dirs = [[0,1], [1,0], [1,1], [-1,1]]; 
-
   for(let r=0; r<GRID_ROWS; r++){
     for(let c=0; c<GRID_COLS; c++){
       if(!board[r][c]) continue;
       let type = board[r][c].type;
-      
       for(let [dr, dc] of dirs) {
-        let r2 = r + dr, c2 = c + dc;
-        let r3 = r + dr*2, c3 = c + dc*2;
-        
+        let r2 = r + dr, c2 = c + dc, r3 = r + dr*2, c3 = c + dc*2;
         if(r3 >= 0 && r3 < GRID_ROWS && c3 >= 0 && c3 < GRID_COLS) {
            if(board[r2][c2] && board[r3][c3] && board[r2][c2].type === type && board[r3][c3].type === type) {
               movesExist = true; break;
@@ -479,13 +498,8 @@ function checkDeadlock(scene) {
     }
     if(movesExist) break;
   }
-
-  // If literally zero straight-line matches exist, force a free shuffle
   if(!movesExist) {
-    scene.time.delayedCall(500, () => {
-      score += 200; // Refund the shuffle cost temporarily
-      applyShuffle(scene);
-    });
+    scene.time.delayedCall(500, () => { score += 200; applyShuffle(scene); });
   }
 }
 
@@ -523,24 +537,19 @@ function handlePointerMove(scene, pointer) {
         } else if (lumen.type === currentType) {
           
           if (selectedLumens.length > 1 && lumen === selectedLumens[selectedLumens.length - 2]) {
-            // BACKTRACK / UNDO
             const removed = selectedLumens.pop(); 
-            if(selectedLumens.length === 1) currentDirection = null; // Unlock direction if back to start
+            if(selectedLumens.length === 1) currentDirection = null; 
             resetLumenVisual(scene, removed); drawLine();
           } else if (!selectedLumens.includes(lumen)) {
-            
-            // NEW CONNECTION (ENFORCE STRAIGHT LINE)
             const last = selectedLumens[selectedLumens.length - 1];
             const rowDiff = lumen.row - last.row;
             const colDiff = lumen.col - last.col;
 
             if (Math.abs(rowDiff) <= 1 && Math.abs(colDiff) <= 1 && !(rowDiff === 0 && colDiff === 0)) {
               if (selectedLumens.length === 1) {
-                // Lock the direction on the 2nd piece
                 currentDirection = { r: rowDiff, c: colDiff };
                 addLumenToChain(scene, lumen);
               } else {
-                // Enforce the locked direction for the 3rd piece onwards
                 if (rowDiff === currentDirection.r && colDiff === currentDirection.c) {
                   addLumenToChain(scene, lumen);
                 }
@@ -557,7 +566,6 @@ function addLumenToChain(scene, lumen) {
   selectedLumens.push(lumen);
   if (lumen.floatTween) lumen.floatTween.pause();
   lumen.sprite.setTexture(`${lumen.name}_open`);
-  
   scene.tweens.add({ targets: lumen.sprite, scaleX: 1.25, scaleY: 1.25, duration: 150, ease: 'Back.easeOut' });
   
   playLinkSound(selectedLumens.length); 
