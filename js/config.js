@@ -11,6 +11,9 @@ const BOARD_OFFSET_Y = 290;
 const ACTIVE_COLORS = 5; 
 const TARGET_SCORE = 3000;
 
+// Special Mechanics
+const FUSION_ORB_TYPE = 99; // Unique ID for the new Fusion Orb
+
 // Ultra-Bright Lumen Designs
 const LUMEN_CONFIGS = [
   { name: 'solar',   base: '#F59E0B', light: '#FDE047', glow: '#FEF08A', shape: 'star',    faceY: 2,  color: 0xFDE047 }, 
@@ -26,13 +29,13 @@ const LUMEN_CONFIGS = [
 let board = [];
 let selectedLumens = [];
 let isDragging = false;
-let currentType = null;
-let currentDirection = null; 
+let currentType = null; // Tracks the color of the current chain
 
 // Graphics Layers
 let lineLayer;
 let lineGlowLayer;
 let particlesLayer;
+let overlayLayer; // New layer to darken the screen during the Fusion Reaction
 
 // UI & Progress State
 let score = 0;
@@ -41,7 +44,7 @@ let scoreText;
 let movesText;
 let progressBar;
 let starIcons = [];
-let isAnimating = false;
+let isAnimating = false; // Locks input during cascades & explosions
 let boosterButtons = []; 
 
 // Global Audio & Scene References
