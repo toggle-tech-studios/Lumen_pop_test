@@ -84,7 +84,90 @@ function generateParticleTexture(scene) {
 }
 
 function generateAllCanvasTextures(scene) {
-  LUMEN_CONFIGS.forEach(cfg => { createCanvasTexture(scene, cfg, false); createCanvasTexture(scene, cfg, true); });
+  // Generate all standard Lumens
+  LUMEN_CONFIGS.forEach(cfg => { 
+      createCanvasTexture(scene, cfg, false); 
+      createCanvasTexture(scene, cfg, true); 
+  });
+  
+  // Generate the new rare Fusion Orb
+  createFusionOrbTexture(scene);
+}
+
+// --- NEW: FUSION ORB TEXTURE GENERATOR ---
+function createFusionOrbTexture(scene) {
+  const canvas = document.createElement('canvas'); 
+  canvas.width = 90; // Slightly larger than normal Lumens (78px)
+  canvas.height = 90;
+  const ctx = canvas.getContext('2d');
+  const cx = 45, cy = 45, r = 32;
+
+  // Outer Aura Glow
+  ctx.shadowColor = '#c084fc';
+  ctx.shadowBlur = 15;
+
+  // Dark Glossy Cocoa/Purple Body
+  const grad = ctx.createRadialGradient(cx - 10, cy - 10, 5, cx, cy, r);
+  grad.addColorStop(0, '#581c87'); // Lighter purple top-left
+  grad.addColorStop(0.6, '#2e1065'); // Deep cocoa/purple mid
+  grad.addColorStop(1, '#090514');   // Almost black bottom-right
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Internal Energy Swirls
+  ctx.shadowBlur = 0; 
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.clip(); // Keep swirls inside the orb
+
+  const drawSwirl = (color, width, x1, y1, cp1x, cp1y, cp2x, cp2y, x2, y2) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x2, y2);
+    ctx.stroke();
+  };
+
+  // Draw colorful magical energy
+  drawSwirl('rgba(56, 189, 248, 0.8)', 6, cx-30, cy-10, cx-10, cy-30, cx+10, cy+30, cx+30, cy+10); // Cyan
+  drawSwirl('rgba(244, 114, 182, 0.8)', 5, cx-20, cy+20, cx-10, cy-10, cx+20, cy-20, cx+20, cy+20); // Pink
+  drawSwirl('rgba(251, 191, 36, 0.8)',  4, cx-10, cy-20, cx+20, cy, cx-20, cy+10, cx+10, cy+20);    // Gold
+
+  // Cute, Mysterious Glowing Eyes (to fit Lumen family)
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = '#ffffff';
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.arc(cx - 12, cy + 2, 3.5, 0, Math.PI*2);
+  ctx.arc(cx + 12, cy + 2, 3.5, 0, Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.restore();
+
+  // Top Glossy Highlight
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - 18, 16, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Floating Particles Orbiting the Orb
+  const colors = ['#38bdf8', '#f472b6', '#fbbf24', '#c084fc'];
+  for(let i = 0; i < 6; i++) {
+    let angle = (Math.PI * 2 / 6) * i;
+    let px = cx + Math.cos(angle) * (r + 7);
+    let py = cy + Math.sin(angle) * (r + 7);
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.beginPath();
+    ctx.arc(px, py, 3, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  scene.textures.addCanvas('fusion_orb', canvas);
 }
 
 function createCanvasTexture(scene, cfg, isOpen) {
@@ -158,13 +241,12 @@ function generateBoosterIcons(scene) {
   scene.textures.addCanvas('icon_burst', c3);
 }
 
-// BUG-FREE UI DRAWING (No stroke methods!)
+// BUG-FREE UI DRAWING
 function buildTopUI(scene) {
   const ui = scene.add.graphics().setDepth(5);
   
-  // Top Banner
-  ui.fillStyle(0xfbcfe8, 1); ui.fillRoundedRect(27, 21, 606, 102, 26); // White border
-  ui.fillStyle(0x4a044e, 1); ui.fillRoundedRect(30, 24, 600, 96, 24); // Inner bg
+  ui.fillStyle(0xfbcfe8, 1); ui.fillRoundedRect(27, 21, 606, 102, 26); 
+  ui.fillStyle(0x4a044e, 1); ui.fillRoundedRect(30, 24, 600, 96, 24); 
 
   const drawPanel = (x, w, title, val, valColor) => {
     ui.fillStyle(0x701a75, 1); ui.fillRoundedRect(x, 40, w, 66, 16);
@@ -181,13 +263,11 @@ function buildProgressBar(scene) {
   scoreText = scene.add.text(48, 128, 'SCORE: 0', { fontSize: '16px', fontStyle: 'bold', color: '#FFFFFF' }).setDepth(6);
   const ui = scene.add.graphics().setDepth(5);
   
-  // Progress Bar BG
-  ui.fillStyle(0xfbcfe8, 1); ui.fillRoundedRect(40, 152, 580, 20, 10); // White border
-  ui.fillStyle(0x4a044e, 1); ui.fillRoundedRect(42, 154, 576, 16, 8); // Inner bg
+  ui.fillStyle(0xfbcfe8, 1); ui.fillRoundedRect(40, 152, 580, 20, 10); 
+  ui.fillStyle(0x4a044e, 1); ui.fillRoundedRect(42, 154, 576, 16, 8); 
   
   progressBar = scene.add.graphics().setDepth(6);
   
-  // Draw bug-free star targets
   [0.33, 0.66, 1.0].forEach((pct) => {
     const starX = 42 + 576 * pct, starY = 162;
     const starBgOuter = scene.add.circle(starX, starY, 16, 0xfbcfe8).setDepth(7);
@@ -232,11 +312,9 @@ function drawPinkBoardGrid(scene) {
   const boardX = BOARD_OFFSET_X - 8;
   const boardY = BOARD_OFFSET_Y - 8;
 
-  // Main board background
   bg.fillStyle(0xfbcfe8, 1); bg.fillRoundedRect(boardX - 4, boardY - 4, boardW + 8, boardH + 8, 28);
   bg.fillStyle(0x4a044e, 1); bg.fillRoundedRect(boardX, boardY, boardW, boardH, 24);
 
-  // Individual grid cells
   for (let r = 0; r < GRID_ROWS; r++) {
     for (let c = 0; c < GRID_COLS; c++) {
       const gap = 4;
@@ -253,7 +331,6 @@ function drawPinkBoardGrid(scene) {
 function buildBoosterDock(scene) {
   const ui = scene.add.graphics().setDepth(5);
   
-  // Booster Panel BG
   ui.fillStyle(0xfbcfe8, 1); ui.fillRoundedRect(39, 937, 582, 102, 26);
   ui.fillStyle(0x4a044e, 1); ui.fillRoundedRect(42, 940, 576, 96, 24);
 
@@ -270,9 +347,7 @@ function buildBoosterDock(scene) {
     
     const drawBtn = (isDown) => {
       btnGfx.clear(); 
-      // Button Border
       btnGfx.fillStyle(0xf9a8d4, 1); btnGfx.fillRoundedRect(btnX - 77, btnY - 37, 154, 74, 18);
-      // Button Inner
       btnGfx.fillStyle(isDown ? 0xbe185d : 0x701a75, 1); btnGfx.fillRoundedRect(btnX - 75, btnY - 35, 150, 70, 16);
     };
     drawBtn(false);
