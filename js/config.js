@@ -1,11 +1,19 @@
 // --- GAME CONFIGURATION & GLOBAL VARIABLES ---
 
+// --- DYNAMIC FULLSCREEN CALCULATION ---
+const GAME_WIDTH = 660;
+const SCREEN_RATIO = window.innerHeight / window.innerWidth;
+// We ensure the game is at least 1100px tall, but expands to fill taller phones
+const GAME_HEIGHT = Math.max(1100, GAME_WIDTH * SCREEN_RATIO); 
+
 // Grid Settings
 const GRID_ROWS = 7;
 const GRID_COLS = 7;
 const TILE_SIZE = 78;  
-const BOARD_OFFSET_X = 57;
-const BOARD_OFFSET_Y = 290;
+// Dynamically center the board horizontally
+const BOARD_OFFSET_X = (GAME_WIDTH - (GRID_COLS * TILE_SIZE)) / 2;
+// Push the board down slightly on taller screens
+const BOARD_OFFSET_Y = GAME_HEIGHT > 1200 ? 340 : 290;
 
 // Special Mechanics
 const FUSION_ORB_TYPE = 99; 
@@ -23,13 +31,11 @@ const LUMEN_CONFIGS = [
 
 // --- ♾️ INFINITE LEVEL GENERATOR (INTENSE SCALING) ---
 function getLevelData(level) {
-  let colors = 4; // Keeps board very easy/forgiving for early levels
+  let colors = 4; 
   if (level > 10) colors = 5;
   if (level > 30) colors = 6;
   if (level > 60) colors = 7; 
 
-  // Level 1 = 3000 target points + 35 moves
-  // Increases by +1000 target points and +20 moves per level
   let target = 3000 + ((level - 1) * 1000);
   let moves = 35 + ((level - 1) * 20);
 
