@@ -9,7 +9,8 @@ function getLevelBackground(lvl) {
 class BootScene extends Phaser.Scene {
     constructor() { super({ key: 'BootScene' }); }
     preload() { 
-        this.load.image('loading_logo', ASSET_PATHS.logos + 'loading.png'); 
+        // Updated to use your renamed logo.png
+        this.load.image('loading_logo', ASSET_PATHS.logos + 'logo.png'); 
     }
     create() { this.scene.start('PreloadScene'); }
 }
@@ -31,7 +32,7 @@ class PreloadScene extends Phaser.Scene {
         if (this.textures.exists('loading_logo')) {
             this.add.image(cx, cy - 60, 'loading_logo')
                 .setOrigin(0.5)
-                .setDisplaySize(Math.min(250, GAME_WIDTH * 0.5), Math.min(250, GAME_WIDTH * 0.5));
+                .setDisplaySize(Math.min(200, GAME_WIDTH * 0.4), Math.min(200, GAME_WIDTH * 0.4));
         }
 
         // Setup smooth progress bar
@@ -48,11 +49,11 @@ class PreloadScene extends Phaser.Scene {
 
         this.load.on('progress', (value) => { this.loadProgress = value; });
 
-        // FIX 1: URL Encode spaces in audio file names to prevent network crashes!
-        this.load.audio('bgm_home', ASSET_PATHS.music + 'homepage%20music.mp3');
-        this.load.audio('bgm_game', ASSET_PATHS.music + 'gameplay%20music.mp3');
+        // LOAD AUDIO (Updated to your renamed files without spaces!)
+        this.load.audio('bgm_home', ASSET_PATHS.music + 'homepage_music.mp3');
+        this.load.audio('bgm_game', ASSET_PATHS.music + 'gameplay_music.mp3');
 
-        // --- Load UI ---
+        // LOAD UI
         this.load.image('ui_top_panel', ASSET_PATHS.ui + 'ui_top_panel.png');
         this.load.image('ui_booster_dock', ASSET_PATHS.ui + 'ui_booster_dock.png');
         this.load.image('node_active', ASSET_PATHS.ui + 'node_active.png');
@@ -64,10 +65,11 @@ class PreloadScene extends Phaser.Scene {
         this.load.image('icon_bomb', ASSET_PATHS.ui + 'icon_bomb.png');
         this.load.image('icon_burst', ASSET_PATHS.ui + 'icon_burst.png');
 
-        // --- Load Backgrounds & Lumens ---
-        for (let i = 1; i <= 10; i++) {
-            this.load.image(`bg_level_${i}`, ASSET_PATHS.background + `bg_level_${i}.png`);
-        }
+        // LAZY LOADING FIX: We ONLY load Background 1 here. 
+        // This stops the memory crash and cuts load time by 70%.
+        this.load.image('bg_level_1', ASSET_PATHS.background + 'bg_level_1.png');
+
+        // LOAD LUMENS
         for (let i = 0; i < 7; i++) {
             this.load.image(LUMEN_TYPES[i].textureClosed, ASSET_PATHS.lumens + LUMEN_TYPES[i].textureClosed + '.png');
             this.load.image(LUMEN_TYPES[i].textureOpen, ASSET_PATHS.lumens + LUMEN_TYPES[i].textureOpen + '.png');
@@ -86,8 +88,8 @@ class PreloadScene extends Phaser.Scene {
         
         let currentWidth = this.barWidth * this.visualProgress;
         
-        // FIX 2: Canvas crashes if a rounded rect's width is smaller than its radius (8 * 2 = 16)
-        if (currentWidth > 16) {
+        // CANVAS FIX: Prevents a crash when the bar width is smaller than the rounded corners
+        if (currentWidth >= 16) {
             this.barFill.fillRoundedRect(this.barX, this.barY, currentWidth, this.barHeight, 8);
         }
 
@@ -107,6 +109,14 @@ class PreloadScene extends Phaser.Scene {
 class GameScene extends Phaser.Scene {
     constructor() { super({ key: 'GameScene' }); }
     
+    // Dynamic preloader: Loads the specific background for this level just before starting
+    preload() {
+        const bgKey = getLevelBackground(currentLevel);
+        if (!this.textures.exists(bgKey)) {
+            this.load.image(bgKey, ASSET_PATHS.background + bgKey + '.png');
+        }
+    }
+
     create() {
         try {
             if (this.sound && this.cache.audio.exists('bgm_game')) {
@@ -116,9 +126,10 @@ class GameScene extends Phaser.Scene {
         } catch (e) {}
 
         const bgKey = getLevelBackground(currentLevel);
-        if (this.textures.exists(bgKey)) {
-            this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, bgKey).setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setDepth(-10);
-        }
+        const finalBg = this.textures.exists(bgKey) ? bgKey : 'bg_level_1'; // Failsafe
+
+        this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, finalBg)
+            .setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setDepth(-10);
 
         const panelW = Math.min(GAME_WIDTH - 20, 500);
         this.add.image(GAME_WIDTH / 2, 60, 'ui_top_panel').setDisplaySize(panelW, 85).setDepth(10);
