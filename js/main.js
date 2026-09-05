@@ -18,7 +18,6 @@ class PreloadScene extends Phaser.Scene {
     constructor() { super({ key: 'PreloadScene' }); }
     
     init() {
-        // Just in case the device was rotated during boot
         if (typeof updateGameDimensions === 'function') updateGameDimensions();
         
         this.loadProgress = 0;
@@ -50,11 +49,11 @@ class PreloadScene extends Phaser.Scene {
 
         this.load.on('progress', (value) => { this.loadProgress = value; });
 
-        // LOAD AUDIO (Without spaces)
+        // AUDIO
         this.load.audio('bgm_home', ASSET_PATHS.music + 'homepage_music.mp3');
         this.load.audio('bgm_game', ASSET_PATHS.music + 'gameplay_music.mp3');
 
-        // LOAD UI
+        // UI
         this.load.image('ui_top_panel', ASSET_PATHS.ui + 'ui_top_panel.png');
         this.load.image('ui_booster_dock', ASSET_PATHS.ui + 'ui_booster_dock.png');
         this.load.image('node_active', ASSET_PATHS.ui + 'node_active.png');
@@ -66,10 +65,10 @@ class PreloadScene extends Phaser.Scene {
         this.load.image('icon_bomb', ASSET_PATHS.ui + 'icon_bomb.png');
         this.load.image('icon_burst', ASSET_PATHS.ui + 'icon_burst.png');
 
-        // LAZY LOADING FIX
+        // LAZY LOADING
         this.load.image('bg_level_1', ASSET_PATHS.background + 'bg_level_1.png');
 
-        // LOAD LUMENS
+        // LUMENS
         for (let i = 0; i < 7; i++) {
             this.load.image(LUMEN_TYPES[i].textureClosed, ASSET_PATHS.lumens + LUMEN_TYPES[i].textureClosed + '.png');
             this.load.image(LUMEN_TYPES[i].textureOpen, ASSET_PATHS.lumens + LUMEN_TYPES[i].textureOpen + '.png');
@@ -87,7 +86,6 @@ class PreloadScene extends Phaser.Scene {
         this.barFill.fillStyle(0xbe185d, 1);
         
         let currentWidth = this.barWidth * this.visualProgress;
-        
         if (currentWidth >= 16) {
             this.barFill.fillRoundedRect(this.barX, this.barY, currentWidth, this.barHeight, 8);
         }
@@ -116,7 +114,6 @@ class GameScene extends Phaser.Scene {
     }
 
     create() {
-        // NEW: Recalculate exact screen size right before we draw the board!
         if (typeof updateGameDimensions === 'function') {
             updateGameDimensions();
         }
@@ -131,30 +128,46 @@ class GameScene extends Phaser.Scene {
         const bgKey = getLevelBackground(currentLevel);
         const finalBg = this.textures.exists(bgKey) ? bgKey : 'bg_level_1';
 
-        // Background spans the exact new dimensions
         this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, finalBg)
-            .setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setDepth(-10);
+            .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+            .setDepth(-10);
 
-        const panelW = Math.min(GAME_WIDTH - 20, 500);
-        this.add.image(GAME_WIDTH / 2, 60, 'ui_top_panel').setDisplaySize(panelW, 85).setDepth(10);
+        // Responsive top panel sizing
+        const panelW = Math.min(GAME_WIDTH * 0.92, 440);
+        const panelH = 75;
+        const panelY = 48;
+
+        this.add.image(GAME_WIDTH / 2, panelY, 'ui_top_panel')
+            .setDisplaySize(panelW, panelH)
+            .setDepth(10);
             
-        this.levelText = this.add.text(GAME_WIDTH / 2 - (panelW * 0.35), 60, `LVL\n${currentLevel}`, { 
-            fontSize: '16px', fontStyle: 'bold', color: '#ffffff', align: 'center' 
+        this.levelText = this.add.text(GAME_WIDTH / 2 - (panelW * 0.33), panelY, `LVL\n${currentLevel}`, { 
+            fontSize: '15px', fontStyle: 'bold', color: '#ffffff', align: 'center' 
         }).setOrigin(0.5).setDepth(11);
 
-        this.targetText = this.add.text(GAME_WIDTH / 2, 60, `TARGET\n${TARGET_SCORE}`, { 
-            fontSize: '18px', fontStyle: 'bold', color: '#fde047', align: 'center' 
+        this.targetText = this.add.text(GAME_WIDTH / 2, panelY, `TARGET\n${TARGET_SCORE}`, { 
+            fontSize: '16px', fontStyle: 'bold', color: '#fde047', align: 'center' 
         }).setOrigin(0.5).setDepth(11);
 
-        this.movesText = this.add.text(GAME_WIDTH / 2 + (panelW * 0.35), 60, `MOVES\n${movesRemaining}`, { 
-            fontSize: '16px', fontStyle: 'bold', color: '#ffffff', align: 'center' 
+        this.movesText = this.add.text(GAME_WIDTH / 2 + (panelW * 0.33), panelY, `MOVES\n${movesRemaining}`, { 
+            fontSize: '15px', fontStyle: 'bold', color: '#ffffff', align: 'center' 
         }).setOrigin(0.5).setDepth(11);
 
-        this.scoreText = this.add.text(GAME_WIDTH / 2 - (panelW * 0.45), 115, `SCORE: ${score}`, { 
-            fontSize: '18px', fontStyle: 'bold', color: '#38bdf8' 
-        }).setOrigin(0, 0.5).setDepth(11);
+        // SCORE DISPLAY: Centered cleanly in the gap between top panel and board
+        const scoreY = Math.max(panelY + (panelH / 2) + 12, BOARD_OFFSET_Y - 20);
+        this.scoreText = this.add.text(GAME_WIDTH / 2, scoreY, `SCORE: ${score}`, { 
+            fontSize: '19px', 
+            fontStyle: 'bold', 
+            color: '#38bdf8',
+            stroke: '#10052b',
+            strokeThickness: 3
+        }).setOrigin(0.5).setDepth(12);
 
-        this.add.image(GAME_WIDTH / 2, GAME_HEIGHT - 50, 'ui_booster_dock').setDisplaySize(panelW, 80).setDepth(10);
+        // Bottom Booster Dock
+        const dockW = Math.min(GAME_WIDTH * 0.88, 380);
+        this.add.image(GAME_WIDTH / 2, GAME_HEIGHT - 48, 'ui_booster_dock')
+            .setDisplaySize(dockW, 76)
+            .setDepth(10);
 
         initGameLogic(this); 
         initGraphics(this);
@@ -162,9 +175,12 @@ class GameScene extends Phaser.Scene {
 }
 
 const phaserConfig = {
-    type: Phaser.AUTO, width: window.innerWidth, height: window.innerHeight,
+    type: Phaser.AUTO, 
+    width: window.innerWidth, 
+    height: window.innerHeight,
     backgroundColor: '#10052b',
     scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
     scene: [BootScene, PreloadScene, LevelSelectScene, GameScene]
 };
+
 window.addEventListener('DOMContentLoaded', () => { new Phaser.Game(phaserConfig); });
