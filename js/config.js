@@ -1,16 +1,29 @@
 // --- config.js ---
 
-// 1. Core Dynamic Dimensions
-const GAME_WIDTH = window.innerWidth;
-const GAME_HEIGHT = window.innerHeight;
+// 1. Dynamic Dimensions (Changed from 'const' to 'let' so they can update!)
+let GAME_WIDTH = window.innerWidth;
+let GAME_HEIGHT = window.innerHeight;
 
-// 2. Responsive Board Grid Math (Fits both Samsung A32 and iPad screens)
 const GRID_COLS = 7;
 const GRID_ROWS = 7;
-const maxBoardSize = Math.min(GAME_WIDTH * 0.92, 540);
-const TILE_SIZE = Math.floor(maxBoardSize / Math.max(GRID_COLS, GRID_ROWS)); 
-const BOARD_OFFSET_X = (GAME_WIDTH - (GRID_COLS * TILE_SIZE)) / 2;
-const BOARD_OFFSET_Y = (GAME_HEIGHT - (GRID_ROWS * TILE_SIZE)) / 2 + 25;
+
+let maxBoardSize = 0;
+let TILE_SIZE = 0;
+let BOARD_OFFSET_X = 0;
+let BOARD_OFFSET_Y = 0;
+
+// NEW: Function to recalculate perfect centering right before the game starts
+function updateGameDimensions() {
+    GAME_WIDTH = window.innerWidth;
+    GAME_HEIGHT = window.innerHeight;
+    maxBoardSize = Math.min(GAME_WIDTH * 0.92, 540);
+    TILE_SIZE = Math.floor(maxBoardSize / Math.max(GRID_COLS, GRID_ROWS)); 
+    BOARD_OFFSET_X = (GAME_WIDTH - (GRID_COLS * TILE_SIZE)) / 2;
+    BOARD_OFFSET_Y = (GAME_HEIGHT - (GRID_ROWS * TILE_SIZE)) / 2 + 25;
+}
+
+// Call it immediately on load just to set base values
+updateGameDimensions();
 
 // 3. Global Game State
 let currentLevel = 1;
