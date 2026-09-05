@@ -17,7 +17,6 @@
         }
         canvas { display: block; margin: 0 auto; }
         
-        /* Debug Console overlay for iPad */
         #debug-log {
             position: absolute; top: 10px; left: 10px; right: 10px;
             background: rgba(185, 28, 28, 0.95); color: white;
@@ -28,7 +27,6 @@
         }
     </style>
 
-    <!-- 1. CATCH ALL ERRORS AND PRINT TO SCREEN -->
     <script>
         window.addEventListener('error', function(e) {
             var log = document.getElementById('debug-log');
@@ -42,17 +40,16 @@
 <body>
     <div id="debug-log"></div>
 
-    <!-- 2. PHASER FRAMEWORK -->
+    <!-- Phaser 3 Engine -->
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js" 
             onerror="document.getElementById('debug-log').style.display='block'; document.getElementById('debug-log').innerHTML+='❌ Failed to load Phaser engine from internet.<hr>'"></script>
     
-    <!-- 3. GAME FILES (Loaded at the bottom of the body to ensure safe DOM access) -->
-    <script src="config.js" onerror="document.getElementById('debug-log').style.display='block'; document.getElementById('debug-log').innerHTML+='❌ 404: config.js is missing or spelled wrong in GitHub!<hr>'"></script>
-    <script src="audio.js" onerror="document.getElementById('debug-log').style.display='block'; document.getElementById('debug-log').innerHTML+='❌ 404: audio.js is missing or spelled wrong in GitHub!<hr>'"></script>
-    <script src="graphics.js" onerror="document.getElementById('debug-log').style.display='block'; document.getElementById('debug-log').innerHTML+='❌ 404: graphics.js is missing or spelled wrong in GitHub!<hr>'"></script>
-    <script src="logic.js" onerror="document.getElementById('debug-log').style.display='block'; document.getElementById('debug-log').innerHTML+='❌ 404: logic.js is missing or spelled wrong in GitHub!<hr>'"></script>
-    <script src="levels.js" onerror="document.getElementById('debug-log').style.display='block'; document.getElementById('debug-log').innerHTML+='❌ 404: levels.js is missing or spelled wrong in GitHub!<hr>'"></script>
-    <script src="main.js" onerror="document.getElementById('debug-log').style.display='block'; document.getElementById('debug-log').innerHTML+='❌ 404: main.js is missing or spelled wrong in GitHub!<hr>'"></script>
-
+    <!-- Game Modules mapped to the js/ folder -->
+    <script src="js/config.js" onerror="document.getElementById('debug-log').style.display='block'; document.getElementById('debug-log').innerHTML+='❌ 404: js/config.js not found!<hr>'"></script>
+    <script src="js/audio.js" onerror="document.getElementById('debug-log').style.display='block'; document.getElementById('debug-log').innerHTML+='❌ 404: js/audio.js not found!<hr>'"></script>
+    <script src="js/graphics.js" onerror="document.getElementById('debug-log').style.display='block'; document.getElementById('debug-log').innerHTML+='❌ 404: js/graphics.js not found!<hr>'"></script>
+    <script src="js/logic.js" onerror="document.getElementById('debug-log').style.display='block'; document.getElementById('debug-log').innerHTML+='❌ 404: js/logic.js not found!<hr>'"></script>
+    <script src="js/levels.js" onerror="document.getElementById('debug-log').style.display='block'; document.getElementById('debug-log').innerHTML+='❌ 404: js/levels.js not found!<hr>'"></script>
+    <script src="js/main.js" onerror="document.getElementById('debug-log').style.display='block'; document.getElementById('debug-log').innerHTML+='❌ 404: js/main.js not found!<hr>'"></script>
 </body>
 </html>
