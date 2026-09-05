@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Lumen Pop</title>
     
-    <link rel="icon" type="image/png" href="assets/logos/Lumen%20Pop%20main%20logo.png">
-    <link rel="apple-touch-icon" href="assets/logos/Lumen%20Pop%20main%20logo.png">
+    <!-- Path updated to your newly renamed logo -->
+    <link rel="icon" type="image/png" href="assets/logos/logo.png">
+    <link rel="apple-touch-icon" href="assets/logos/logo.png">
     
     <style>
         * { box-sizing: border-box; }
@@ -40,11 +41,11 @@
 <body>
     <div id="debug-log"></div>
 
-    <!-- ADDED CROSSORIGIN: This stops the browser from hiding the real error -->
+    <!-- Phaser 3 Engine (crossorigin added to unmask hidden errors) -->
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js" crossorigin="anonymous"
             onerror="document.getElementById('debug-log').style.display='block'; document.getElementById('debug-log').innerHTML+='❌ Failed to load Phaser engine from internet.<hr>'"></script>
     
-    <!-- Game Modules mapped to the js/ folder -->
+    <!-- Game Modules mapped safely to your js/ folder -->
     <script src="js/config.js" onerror="document.getElementById('debug-log').style.display='block'; document.getElementById('debug-log').innerHTML+='❌ 404: js/config.js not found!<hr>'"></script>
     <script src="js/audio.js" onerror="document.getElementById('debug-log').style.display='block'; document.getElementById('debug-log').innerHTML+='❌ 404: js/audio.js not found!<hr>'"></script>
     <script src="js/graphics.js" onerror="document.getElementById('debug-log').style.display='block'; document.getElementById('debug-log').innerHTML+='❌ 404: js/graphics.js not found!<hr>'"></script>
