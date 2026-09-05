@@ -254,7 +254,7 @@ function buildTopUI(scene) {
     return scene.add.text(x + w/2, 82, val, { fontSize: '26px', fontStyle: 'bold', color: valColor }).setOrigin(0.5).setDepth(6);
   };
 
-  drawPanel(44, 110, 'LEVEL', '1', '#FFFFFF');
+  drawPanel(44, 110, 'LEVEL', `${currentLevel}`, '#FFFFFF');
   drawPanel(172, 316, 'TARGET', `${TARGET_SCORE}`, '#FFFFFF');
   movesText = drawPanel(504, 110, 'MOVES', `${movesRemaining}`, '#FCD34D');
 }
@@ -335,9 +335,9 @@ function buildBoosterDock(scene) {
   ui.fillStyle(0x4a044e, 1); ui.fillRoundedRect(42, 940, 576, 96, 24);
 
   const boosters = [ 
-    { name: 'SHUFFLE', icon: 'icon_shuffle', cost: 200, action: () => applyShuffle(scene) }, 
-    { name: 'BOMB', icon: 'icon_bomb', cost: 400, action: () => applyBomb(scene) }, 
-    { name: 'BURST', icon: 'icon_burst', cost: 600, action: () => applyBurst(scene) } 
+    { name: 'SHUFFLE', icon: 'icon_shuffle', cost: 100, action: () => applyShuffle(scene) }, 
+    { name: 'BOMB', icon: 'icon_bomb', cost: 150, action: () => applyBomb(scene) }, 
+    { name: 'BURST', icon: 'icon_burst', cost: 250, action: () => applyBurst(scene) } 
   ];
 
   boosters.forEach((b, i) => {
