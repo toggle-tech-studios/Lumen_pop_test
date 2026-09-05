@@ -2,7 +2,6 @@
 
 let lineGraphics;
 let lumenSprites = []; 
-let particleManager;
 
 function initGraphics(scene) {
     createBoardBackground(scene);
@@ -10,12 +9,11 @@ function initGraphics(scene) {
     
     lineGraphics = scene.add.graphics().setDepth(5);
     lumenSprites = Array(GRID_ROWS).fill(null).map(() => Array(GRID_COLS).fill(null));
-    particleManager = scene.add.particles('loading_logo').setDepth(20); 
     
     drawLumens(scene);
 }
 
-// FIX: Board outline squishing on phones
+// Fixed Board outline squishing on phones
 function createBoardBackground(scene) {
     const bgWidth = GRID_COLS * TILE_SIZE;
     const bgHeight = GRID_ROWS * TILE_SIZE;
@@ -28,7 +26,7 @@ function createBoardBackground(scene) {
     boardBg.strokeRoundedRect(BOARD_OFFSET_X - 6, BOARD_OFFSET_Y - 6, bgWidth + 12, bgHeight + 12, 16);
 }
 
-// FIX: Giant Burst Button bug fixed! Uses exact baseScale memory.
+// Fixed Giant Burst Button bug (Uses exact baseScale memory)
 function createBoosterButtons(scene) {
     const dockY = GAME_HEIGHT - 50;
     const spacing = Math.min(100, GAME_WIDTH / 3.5);
@@ -113,7 +111,7 @@ function updateLumenVisuals(scene) {
 
             if (data.type === 99) { 
                 sprite.setTexture('fusion_orb');
-                sprite.setDisplaySize(spriteSize, spriteSize); // Enforce size after texture swap
+                sprite.setDisplaySize(spriteSize, spriteSize); 
                 continue; 
             }
 
@@ -156,25 +154,21 @@ function drawConnectionLines(scene, pointer = null) {
     lineGraphics.strokePath();
 }
 
+// Clean, subtle pop animation (no overhyped particles)
 function playPopAnimation(scene, r, c, type) {
     let sprite = lumenSprites[r][c];
     if (!sprite) return;
     
-    let colors = [0x38bdf8, 0x34d399, 0xfde047, 0xc084fc, 0xf43f5e, 0xfb923c, 0xfb7185];
-    let tintColor = type === 99 ? 0xffffff : colors[type % colors.length];
-
-    let emitter = particleManager.createEmitter({
-        x: sprite.x, y: sprite.y, 
-        speed: { min: 80, max: 200 }, 
-        scale: { start: 0.1, end: 0 },
-        tint: tintColor, lifespan: 500, blendMode: 'ADD', quantity: 10
-    });
-    
-    scene.time.delayedCall(500, () => { emitter.remove(); });
-    
     scene.tweens.add({ 
-        targets: sprite, scale: 0, alpha: 0, duration: 150, 
-        onComplete: () => { sprite.destroy(); lumenSprites[r][c] = null; } 
+        targets: sprite, 
+        scale: 0, 
+        alpha: 0, 
+        duration: 180, // Quick and snappy
+        ease: 'Sine.easeIn',
+        onComplete: () => { 
+            sprite.destroy(); 
+            lumenSprites[r][c] = null; 
+        } 
     });
 }
 
