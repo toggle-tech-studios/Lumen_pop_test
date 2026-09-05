@@ -13,52 +13,48 @@ function initGraphics(scene) {
     drawLumens(scene);
 }
 
-// Fixed Board outline squishing on phones
 function createBoardBackground(scene) {
     const bgWidth = GRID_COLS * TILE_SIZE;
     const bgHeight = GRID_ROWS * TILE_SIZE;
     
     let boardBg = scene.add.graphics().setDepth(1);
-    boardBg.fillStyle(0x1a0b36, 0.85); // Dark sleek purple
-    boardBg.fillRoundedRect(BOARD_OFFSET_X - 6, BOARD_OFFSET_Y - 6, bgWidth + 12, bgHeight + 12, 16);
+    boardBg.fillStyle(0x1a0b36, 0.88);
+    boardBg.fillRoundedRect(BOARD_OFFSET_X - 8, BOARD_OFFSET_Y - 8, bgWidth + 16, bgHeight + 16, 16);
     
     boardBg.lineStyle(3, 0xfbcfe8, 0.5);
-    boardBg.strokeRoundedRect(BOARD_OFFSET_X - 6, BOARD_OFFSET_Y - 6, bgWidth + 12, bgHeight + 12, 16);
+    boardBg.strokeRoundedRect(BOARD_OFFSET_X - 8, BOARD_OFFSET_Y - 8, bgWidth + 16, bgHeight + 16, 16);
 }
 
-// Fixed Giant Burst Button bug (Uses exact baseScale memory)
 function createBoosterButtons(scene) {
     const dockY = GAME_HEIGHT - 50;
-    const spacing = Math.min(100, GAME_WIDTH / 3.5);
-    const startX = GAME_WIDTH / 2 - spacing;
-
+    
+    // Fixed slots matching the 3 compartments on the ui_booster_dock graphic
+    const slotOffset = Math.min(105, GAME_WIDTH * 0.26);
     const boosters = [
-        { id: 'shuffle', key: 'icon_shuffle', cost: BOOSTERS.shuffle.cost, x: startX },
-        { id: 'bomb', key: 'icon_bomb', cost: BOOSTERS.bomb.cost, x: GAME_WIDTH / 2 },
-        { id: 'burst', key: 'icon_burst', cost: BOOSTERS.burst.cost, x: startX + spacing }
+        { id: 'shuffle', key: 'icon_shuffle', cost: BOOSTERS.shuffle.cost, x: (GAME_WIDTH / 2) - slotOffset },
+        { id: 'bomb',    key: 'icon_bomb',    cost: BOOSTERS.bomb.cost,    x: GAME_WIDTH / 2 },
+        { id: 'burst',   key: 'icon_burst',   cost: BOOSTERS.burst.cost,   x: (GAME_WIDTH / 2) + slotOffset }
     ];
 
     boosters.forEach(b => {
-        let btn = scene.add.image(b.x, dockY - 5, b.key)
-            .setDisplaySize(45, 45)
+        let btn = scene.add.image(b.x, dockY - 6, b.key)
+            .setDisplaySize(42, 42)
             .setInteractive({ useHandCursor: true })
             .setDepth(15);
             
-        // Memorize the exact scale required to keep the button at 45x45
         let baseScaleX = btn.scaleX;
         let baseScaleY = btn.scaleY;
             
-        let costText = scene.add.text(b.x, dockY + 25, `-${b.cost}`, {
-            fontSize: '14px', fontStyle: 'bold', color: '#fca5a5'
+        scene.add.text(b.x, dockY + 24, `-${b.cost}`, {
+            fontSize: '13px', fontStyle: 'bold', color: '#fca5a5'
         }).setOrigin(0.5).setDepth(15);
 
-        // Safely scale down based on its memorized size
         btn.on('pointerdown', () => { 
-            btn.setScale(baseScaleX * 0.8, baseScaleY * 0.8); 
+            btn.setScale(baseScaleX * 0.85, baseScaleY * 0.85); 
         });
         
         btn.on('pointerup', () => { 
-            btn.setScale(baseScaleX, baseScaleY); // Returns safely to exact UI size!
+            btn.setScale(baseScaleX, baseScaleY);
             activateBooster(scene, b.id);
         });
         
@@ -69,7 +65,8 @@ function createBoosterButtons(scene) {
 }
 
 function drawLumens(scene) {
-    const spriteSize = TILE_SIZE * 0.82; 
+    // Clamped cell size ensures zero overlap between adjacent rows and columns
+    const spriteSize = Math.floor(TILE_SIZE * 0.72);
 
     for (let r = 0; r < GRID_ROWS; r++) {
         for (let c = 0; c < GRID_COLS; c++) {
@@ -93,13 +90,13 @@ function drawLumens(scene) {
             
             lumenSprites[r][c] = sprite;
 
-            scene.tweens.add({ targets: sprite, y: y, duration: 600 + (r * 100), ease: 'Bounce.easeOut' });
+            scene.tweens.add({ targets: sprite, y: y, duration: 500 + (r * 70), ease: 'Bounce.easeOut' });
         }
     }
 }
 
 function updateLumenVisuals(scene) {
-    const spriteSize = TILE_SIZE * 0.82; 
+    const spriteSize = Math.floor(TILE_SIZE * 0.72);
 
     for (let r = 0; r < GRID_ROWS; r++) {
         for (let c = 0; c < GRID_COLS; c++) {
@@ -111,7 +108,7 @@ function updateLumenVisuals(scene) {
 
             if (data.type === 99) { 
                 sprite.setTexture('fusion_orb');
-                sprite.setDisplaySize(spriteSize, spriteSize); 
+                sprite.setDisplaySize(spriteSize, spriteSize);
                 continue; 
             }
 
@@ -123,9 +120,9 @@ function updateLumenVisuals(scene) {
                 
                 scene.tweens.add({ 
                     targets: sprite, 
-                    scaleX: sprite.scaleX * 1.15, 
-                    scaleY: sprite.scaleY * 1.15, 
-                    duration: 300, yoyo: true, repeat: -1 
+                    scaleX: sprite.scaleX * 1.12, 
+                    scaleY: sprite.scaleY * 1.12, 
+                    duration: 250, yoyo: true, repeat: -1 
                 });
             } else {
                 sprite.setTexture(LUMEN_TYPES[data.type].textureClosed);
@@ -139,7 +136,7 @@ function drawConnectionLines(scene, pointer = null) {
     lineGraphics.clear();
     if (linkedLumens.length === 0) return;
     
-    lineGraphics.lineStyle(8, 0xfbcfe8, 0.9);
+    lineGraphics.lineStyle(6, 0xfbcfe8, 0.9);
     lineGraphics.beginPath();
 
     for (let i = 0; i < linkedLumens.length; i++) {
@@ -154,7 +151,6 @@ function drawConnectionLines(scene, pointer = null) {
     lineGraphics.strokePath();
 }
 
-// Clean, subtle pop animation (no overhyped particles)
 function playPopAnimation(scene, r, c, type) {
     let sprite = lumenSprites[r][c];
     if (!sprite) return;
@@ -163,7 +159,7 @@ function playPopAnimation(scene, r, c, type) {
         targets: sprite, 
         scale: 0, 
         alpha: 0, 
-        duration: 180, // Quick and snappy
+        duration: 160, 
         ease: 'Sine.easeIn',
         onComplete: () => { 
             sprite.destroy(); 
@@ -176,8 +172,11 @@ function animateLumenDrop(scene, r, c, newY, delay) {
     let sprite = lumenSprites[r][c];
     if (!sprite) return;
     
+    const spriteSize = Math.floor(TILE_SIZE * 0.72);
+    sprite.setDisplaySize(spriteSize, spriteSize);
+
     scene.tweens.add({ 
-        targets: sprite, y: newY, duration: 400, ease: 'Bounce.easeOut', delay: delay 
+        targets: sprite, y: newY, duration: 380, ease: 'Bounce.easeOut', delay: delay 
     });
 }
 
@@ -185,27 +184,27 @@ function showEndGamePopup(scene, isWin, starsEarned) {
     let popupContainer = scene.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(200);
     
     let overlay = scene.add.rectangle(0, 0, GAME_WIDTH * 2, GAME_HEIGHT * 2, 0x000000, 0.75).setInteractive();
-    let bg = scene.add.image(0, 0, 'popup_game_over').setDisplaySize(320, 360);
+    let bg = scene.add.image(0, 0, 'popup_game_over').setDisplaySize(310, 350);
 
-    let titleText = scene.add.text(0, -110, isWin ? 'CLEARED!' : 'OUT OF MOVES', {
-        fontSize: '30px', fontStyle: 'bold', color: isWin ? '#FCD34D' : '#fca5a5', stroke: '#4a044e', strokeThickness: 4
+    let titleText = scene.add.text(0, -105, isWin ? 'CLEARED!' : 'OUT OF MOVES', {
+        fontSize: '28px', fontStyle: 'bold', color: isWin ? '#FCD34D' : '#fca5a5', stroke: '#4a044e', strokeThickness: 4
     }).setOrigin(0.5);
 
-    let scoreDisplay = scene.add.text(0, -30, `Score: ${score}`, { 
-        fontSize: '26px', fontStyle: 'bold', color: '#FFFFFF' 
+    let scoreDisplay = scene.add.text(0, -25, `Score: ${score}`, { 
+        fontSize: '24px', fontStyle: 'bold', color: '#FFFFFF' 
     }).setOrigin(0.5);
 
     let stars = [];
     for (let i = 0; i < 3; i++) {
-        let star = scene.add.text(-50 + (i * 50), 30, '★', { 
-            fontSize: '48px', color: i < starsEarned ? '#FCD34D' : '#9ca3af', stroke: '#111827', strokeThickness: 3 
+        let star = scene.add.text(-44 + (i * 44), 30, '★', { 
+            fontSize: '44px', color: i < starsEarned ? '#FCD34D' : '#9ca3af', stroke: '#111827', strokeThickness: 3 
         }).setOrigin(0.5);
         stars.push(star);
     }
 
-    let btnZone = scene.add.zone(0, 130, 200, 60).setInteractive({ useHandCursor: true });
-    let btnText = scene.add.text(0, 130, isWin ? 'CONTINUE' : 'TRY AGAIN', {
-        fontSize: '24px', fontStyle: 'bold', color: '#ffffff', stroke: '#059669', strokeThickness: 4
+    let btnZone = scene.add.zone(0, 120, 190, 55).setInteractive({ useHandCursor: true });
+    let btnText = scene.add.text(0, 120, isWin ? 'CONTINUE' : 'TRY AGAIN', {
+        fontSize: '22px', fontStyle: 'bold', color: '#ffffff', stroke: '#059669', strokeThickness: 4
     }).setOrigin(0.5);
 
     btnZone.on('pointerdown', () => btnText.setScale(0.9));
@@ -215,7 +214,6 @@ function showEndGamePopup(scene, isWin, starsEarned) {
     });
 
     popupContainer.add([overlay, bg, titleText, scoreDisplay, ...stars, btnZone, btnText]);
-    
     popupContainer.setScale(0);
-    scene.tweens.add({ targets: popupContainer, scale: 1, duration: 400, ease: 'Back.easeOut' });
+    scene.tweens.add({ targets: popupContainer, scale: 1, duration: 350, ease: 'Back.easeOut' });
 }
