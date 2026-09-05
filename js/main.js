@@ -1,161 +1,182 @@
-// --- PHASER SCENES & GAME INITIALIZATION ---
+// --- main.js ---
 
+// Helper function to calculate background biomes (1-10 = bg 1, 11-20 = bg 2, etc.)
+function getLevelBackground(lvl) {
+    let index = Math.ceil(lvl / 10);
+    index = ((index - 1) % 10) + 1; // Cycles 1 to 10 continuously for infinite levels
+    return `bg_level_${index}`;
+}
+
+// 1. BOOT SCENE (Loads only the logo first so it can be displayed during the main load)
 class BootScene extends Phaser.Scene {
-  constructor() { super({ key: 'BootScene' }); }
-  
-  preload() {
-    const loadingElement = document.getElementById('loading');
-    if (loadingElement) loadingElement.style.display = 'none';
-
-    this.load.image('logo', 'assets/logo/loading.png');
-  }
-
-  create() {
-    this.scene.start('PreloadScene');
-  }
+    constructor() {
+        super({ key: 'BootScene' });
+    }
+    preload() {
+        this.load.image('loading_logo', ASSET_PATHS.logos + 'loading.png');
+    }
+    create() {
+        this.scene.start('PreloadScene');
+    }
 }
 
+// 2. PRELOAD SCENE (Smooth Progress Bar & Asset Loading)
 class PreloadScene extends Phaser.Scene {
-  constructor() { super({ key: 'PreloadScene' }); }
-  
-  preload() {
-    this.cameras.main.setBackgroundColor('#10052b');
+    constructor() {
+        super({ key: 'PreloadScene' });
+    }
 
-    // Center the logo perfectly in the new dynamic screen
-    let logo = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 100, 'logo');
-    let scaleRatio = (logo.width > 0) ? (550 / logo.width) : 0.8;
-    logo.setScale(scaleRatio);
+    init() {
+        this.loadProgress = 0;
+        this.visualProgress = 0;
+        this.isLoaded = false;
+        this.transitioning = false;
+    }
 
-    let bgBar = this.add.graphics();
-    let progressBar = this.add.graphics();
-    
-    // Center the loading bar at the bottom
-    const barY = GAME_HEIGHT - 200;
-    const barX = (GAME_WIDTH - 406) / 2;
-    
-    bgBar.fillStyle(0xfbcfe8, 1);
-    bgBar.fillRoundedRect(barX, barY, 406, 30, 15);
-    bgBar.fillStyle(0x4a044e, 1);
-    bgBar.fillRoundedRect(barX + 3, barY + 3, 400, 24, 12);
-    
-    let loadingText = this.add.text(GAME_WIDTH / 2, barY - 30, 'SUMMONING LUMENS... 0%', { 
-      fontSize: '18px', 
-      fontStyle: 'bold', 
-      color: '#fbcfe8', 
-      letterSpacing: 2 
-    }).setOrigin(0.5);
+    preload() {
+        // Display Loading Logo
+        this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 50, 'loading_logo')
+            .setOrigin(0.5)
+            .setDisplaySize(300, 300); // Scale appropriately for mobile
 
-    this.load.audio('gameplayBgm', 'assets/music/homepage.mp3');
-    this.load.image('game_bg', 'game_bg.png'); 
+        // Setup Smooth Progress Bar Graphics
+        this.barBg = this.add.graphics();
+        this.barBg.fillStyle(0x4a044e, 1);
+        this.barBg.fillRoundedRect(GAME_WIDTH / 2 - 150, GAME_HEIGHT / 2 + 150, 300, 24, 12);
 
-    this.load.on('progress', (value) => {
-        progressBar.clear();
-        progressBar.fillStyle(0xFCD34D, 1);
-        let currentWidth = Math.max(20, 396 * value); 
-        progressBar.fillRoundedRect(barX + 5, barY + 5, currentWidth, 20, 10);
-        loadingText.setText('SUMMONING LUMENS... ' + Math.round(value * 100) + '%');
-    });
+        this.barFill = this.add.graphics();
 
-    this.load.on('complete', () => {
-        generateParticleTexture(this);
-        generateBoosterIcons(this);
-        generateAllCanvasTextures(this);
-    });
-  }
+        // Track actual file load progress
+        this.load.on('progress', (value) => {
+            this.loadProgress = value;
+        });
 
-  create() {
-    this.scene.start('LevelSelectScene');
-  }
+        // --- LOAD MUSIC ---
+        this.load.audio('bgm_home', ASSET_PATHS.music + 'homepage music.mp3');
+        this.load.audio('bgm_game', ASSET_PATHS.music + 'gameplay music.mp3');
+
+        // --- LOAD UI ASSETS ---
+        this.load.image('ui_top_panel', ASSET_PATHS.ui + 'ui_top_panel.png');
+        this.load.image('ui_booster_dock', ASSET_PATHS.ui + 'ui_booster_dock.png');
+        this.load.image('node_active', ASSET_PATHS.ui + 'node_active.png');
+        this.load.image('node_locked', ASSET_PATHS.ui + 'node_locked.png');
+        this.load.image('popup_level_select', ASSET_PATHS.ui + 'popup_level_select.png');
+        this.load.image('popup_game_over', ASSET_PATHS.ui + 'popup_game_over.png');
+        
+        // --- LOAD BOOSTER ICONS ---
+        this.load.image('icon_shuffle', ASSET_PATHS.ui + 'icon_shuffle.png');
+        this.load.image('icon_bomb', ASSET_PATHS.ui + 'icon_bomb.png');
+        this.load.image('icon_burst', ASSET_PATHS.ui + 'icon_burst.png');
+
+        // --- LOAD BACKGROUNDS (1 to 10) ---
+        for (let i = 1; i <= 10; i++) {
+            this.load.image(`bg_level_${i}`, ASSET_PATHS.background + `bg_level_${i}.png`);
+        }
+
+        // --- LOAD LUMENS & FUSION ORB ---
+        for (let i = 0; i < 7; i++) {
+            let lumen = LUMEN_TYPES[i];
+            this.load.image(lumen.textureClosed, ASSET_PATHS.lumens + lumen.textureClosed + '.png');
+            this.load.image(lumen.textureOpen, ASSET_PATHS.lumens + lumen.textureOpen + '.png');
+        }
+        this.load.image('fusion_orb', ASSET_PATHS.lumens + 'fusion_orb.png');
+    }
+
+    create() {
+        // Files are downloaded, but we wait for the visual bar to catch up
+        this.isLoaded = true;
+    }
+
+    update() {
+        if (this.transitioning) return;
+
+        // Smoothly interpolate visual progress towards actual load progress
+        this.visualProgress += (this.loadProgress - this.visualProgress) * 0.1;
+
+        // Redraw smooth bar
+        this.barFill.clear();
+        this.barFill.fillStyle(0xbe185d, 1);
+        let currentWidth = 300 * this.visualProgress;
+        if (currentWidth > 0) {
+            this.barFill.fillRoundedRect(GAME_WIDTH / 2 - 150, GAME_HEIGHT / 2 + 150, currentWidth, 24, 12);
+        }
+
+        // Wait until visual bar is completely full (99.5% rounded up) before starting
+        if (this.isLoaded && this.visualProgress >= 0.995) {
+            this.transitioning = true;
+            this.barFill.clear();
+            this.barFill.fillStyle(0xbe185d, 1);
+            this.barFill.fillRoundedRect(GAME_WIDTH / 2 - 150, GAME_HEIGHT / 2 + 150, 300, 24, 12);
+            
+            // Start Home Music & Transition
+            this.sound.stopAll();
+            this.sound.play('bgm_home', { loop: true, volume: 0.5 });
+            this.scene.start('LevelSelectScene');
+        }
+    }
 }
 
+// 3. GAME SCENE (Core Gameplay)
 class GameScene extends Phaser.Scene {
-  constructor() { super({ key: 'GameScene' }); }
-
-  create() {
-    mainScene = this; 
-    
-    board = []; 
-    selectedLumens = []; 
-    isDragging = false;
-    currentType = null; 
-    currentDirection = null; 
-    score = 0; 
-    isAnimating = false; 
-    boosterButtons = []; 
-    starIcons = [];
-
-    // Ensure background covers the whole dynamic screen
-    if (currentLevel === 1) {
-      mainScene.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'game_bg').setDepth(-10).setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
-    } else {
-      this.generateLevelBackground(currentLevel);
-      mainScene.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg_lvl_' + currentLevel).setDepth(-10);
+    constructor() {
+        super({ key: 'GameScene' });
     }
 
-    try {
-      initAudio(mainScene);
-    } catch (e) {
-      console.warn("Audio init in GameScene bypassed:", e);
+    create() {
+        // Swap to Gameplay Music
+        this.sound.stopAll();
+        this.sound.play('bgm_game', { loop: true, volume: 0.4 });
+
+        // Generate and Set Background based on current level biome
+        const bgKey = getLevelBackground(currentLevel);
+        this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, bgKey)
+            .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+            .setDepth(-10);
+
+        // UI Top Panel Setup
+        let topUI = this.add.image(GAME_WIDTH / 2, 70, 'ui_top_panel')
+            .setDisplaySize(GAME_WIDTH - 20, 100)
+            .setDepth(10);
+            
+        this.levelText = this.add.text(50, 60, `LEVEL\n${currentLevel}`, { 
+            fontSize: '18px', fontStyle: 'bold', color: '#ffffff', align: 'center' 
+        }).setOrigin(0.5).setDepth(11);
+
+        this.targetText = this.add.text(GAME_WIDTH / 2, 60, `TARGET\n${TARGET_SCORE}`, { 
+            fontSize: '22px', fontStyle: 'bold', color: '#fde047', align: 'center' 
+        }).setOrigin(0.5).setDepth(11);
+
+        this.movesText = this.add.text(GAME_WIDTH - 50, 60, `MOVES\n${movesRemaining}`, { 
+            fontSize: '18px', fontStyle: 'bold', color: '#ffffff', align: 'center' 
+        }).setOrigin(0.5).setDepth(11);
+
+        this.scoreText = this.add.text(20, 130, `SCORE: ${score}`, { 
+            fontSize: '20px', fontStyle: 'bold', color: '#38bdf8' 
+        }).setDepth(11);
+
+        // Booster Dock Setup
+        let dockUI = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT - 60, 'ui_booster_dock')
+            .setDisplaySize(GAME_WIDTH - 20, 90)
+            .setDepth(10);
+
+        // Initialize Core Board Logic (Calls from logic.js & graphics.js)
+        initGameLogic(this); 
+        initGraphics(this);
     }
-
-    buildTopUI(mainScene);
-    buildProgressBar(mainScene);
-    buildBoosterDock(mainScene);
-    drawPinkBoardGrid(mainScene);
-
-    lineGlowLayer = mainScene.add.graphics().setDepth(9);
-    lineLayer = mainScene.add.graphics().setDepth(10);
-    particlesLayer = mainScene.add.group();
-
-    spawnGrid(mainScene);
-    updateScoreUI(); 
-
-    mainScene.input.on('pointerdown', (pointer) => handlePointerMove(mainScene, pointer));
-    mainScene.input.on('pointermove', (pointer) => handlePointerMove(mainScene, pointer));
-    mainScene.input.on('pointerup', () => endConnection(mainScene));
-  }
-
-  generateLevelBackground(level) {
-    if (this.textures.exists('bg_lvl_' + level)) return;
-
-    const canvas = document.createElement('canvas'); 
-    canvas.width = GAME_WIDTH; 
-    canvas.height = GAME_HEIGHT;
-    const ctx = canvas.getContext('2d'); 
-    
-    const hue1 = (level * 35) % 360;
-    const hue2 = (level * 35 + 40) % 360;
-
-    const sky = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
-    sky.addColorStop(0, `hsl(${hue1}, 60%, 12%)`);
-    sky.addColorStop(0.5, `hsl(${hue2}, 60%, 8%)`);
-    sky.addColorStop(1, `hsl(${(hue1 + 180) % 360}, 50%, 15%)`);
-    ctx.fillStyle = sky; 
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-    for(let i = 0; i < 150; i++) {
-      ctx.fillStyle = Math.random() > 0.5 ? '#ffffff' : `hsl(${hue1}, 100%, 80%)`;
-      ctx.globalAlpha = Math.random() * 0.8 + 0.2;
-      ctx.beginPath();
-      ctx.arc(Math.random() * GAME_WIDTH, Math.random() * GAME_HEIGHT, Math.random() * 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    
-    this.textures.addCanvas('bg_lvl_' + level, canvas);
-  }
 }
 
+// 4. PHASER CONFIGURATION
 const config = {
-  type: Phaser.AUTO,
-  width: GAME_WIDTH,
-  height: GAME_HEIGHT,
-  backgroundColor: '#10052b',
-  scale: { 
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-    parent: document.body
-  },
-  scene: [BootScene, PreloadScene, LevelSelectScene, GameScene]
+    type: Phaser.AUTO,
+    width: GAME_WIDTH,
+    height: GAME_HEIGHT,
+    backgroundColor: '#10052b', // Failsafe cosmic purple
+    scale: {
+        mode: Phaser.Scale.RESIZE, // Adapts dynamically to device rotation/size
+        autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    scene: [BootScene, PreloadScene, LevelSelectScene, GameScene]
 };
 
-const phaserGame = new Phaser.Game(config);
+// Start Game
+const game = new Phaser.Game(config);
