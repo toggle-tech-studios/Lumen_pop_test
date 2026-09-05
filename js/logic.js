@@ -7,13 +7,13 @@ let currentLinkColor = -1;
 let gameSceneRef = null;
 let isGameOver = false;
 let activeBooster = null;
-let isAnimating = false; // NEW: Locks input while pieces are falling to prevent crashes!
+let isAnimating = false; // Locks input during animations to prevent state corruption
 
 function initGameLogic(scene) {
     gameSceneRef = scene;
     isGameOver = false;
     isDragging = false;
-    isAnimating = false; // Reset lock on start
+    isAnimating = false;
     linkedLumens = [];
     activeBooster = null;
     score = 0;
@@ -55,7 +55,6 @@ function createRandomLumen() {
 }
 
 function handlePointerDown(scene, r, c) {
-    // If the game is over OR pieces are currently animating/falling, ignore the tap!
     if (isGameOver || isAnimating) return;
 
     if (activeBooster === 'bomb' || activeBooster === 'burst') {
@@ -126,7 +125,7 @@ function handlePointerUp(scene) {
 }
 
 function processMatches(scene) {
-    isAnimating = true; // Lock input while processing match
+    isAnimating = true;
 
     let points = linkedLumens.length * 10;
     if (linkedLumens.length >= 5) points += 50; 
@@ -150,8 +149,9 @@ function processMatches(scene) {
 
 function applyGravity(scene) {
     let dropped = false;
+    const spriteSize = Math.floor(TILE_SIZE * 0.72);
 
-    // 1. Move Lumens down into empty spaces
+    // 1. Shift falling Lumens down into vacant cells
     for (let c = 0; c < GRID_COLS; c++) {
         for (let r = GRID_ROWS - 1; r >= 0; r--) {
             if (grid[r][c] === null) {
@@ -164,7 +164,6 @@ function applyGravity(scene) {
                         lumenSprites[r][c] = sprite;
                         lumenSprites[k][c] = null;
                         
-                        // NEW: Safety check prevents "null is not an object" crash
                         if (sprite) {
                             sprite.gridRow = r;
                             let newY = BOARD_OFFSET_Y + (r * TILE_SIZE) + (TILE_SIZE / 2);
@@ -179,7 +178,7 @@ function applyGravity(scene) {
         }
     }
 
-    // 2. Fill empty top spaces with new random Lumens
+    // 2. Spawn new Lumens from top to fill remaining empty cells
     let maxDelay = 0;
     for (let c = 0; c < GRID_COLS; c++) {
         let emptySpaces = 0;
@@ -197,7 +196,7 @@ function applyGravity(scene) {
             let textureKey = grid[r][c].type === 99 ? 'fusion_orb' : LUMEN_TYPES[grid[r][c].type].textureClosed;
             
             let sprite = scene.add.image(x, startY, textureKey)
-                .setDisplaySize(TILE_SIZE * 0.82, TILE_SIZE * 0.82)
+                .setDisplaySize(spriteSize, spriteSize)
                 .setDepth(2)
                 .setInteractive({ useHandCursor: true });
                 
@@ -215,11 +214,11 @@ function applyGravity(scene) {
         }
     }
 
-    // Wait for animations to finish, then UNLOCK the board
+    // Unlock interactions once all drop tweens complete
     scene.time.delayedCall(maxDelay + 450, () => {
         if (typeof updateLumenVisuals === 'function') updateLumenVisuals(scene);
         checkWinLossConditions(scene);
-        isAnimating = false; // Grid settles -> Allow player input again!
+        isAnimating = false;
     });
 }
 
@@ -231,7 +230,7 @@ function updateScore(amount) {
 }
 
 function activateBooster(scene, type) {
-    if (isGameOver || isAnimating) return; // Prevent booster overlap
+    if (isGameOver || isAnimating) return;
     
     let boosterData = BOOSTERS[type];
     
@@ -263,7 +262,7 @@ function handleBoosterTarget(scene, centerR, centerC) {
     
     if (!targetLumen) return;
 
-    isAnimating = true; // Lock input during explosion
+    isAnimating = true;
     let boosterData = BOOSTERS[type];
     updateScore(-boosterData.scorePenalty);
 
