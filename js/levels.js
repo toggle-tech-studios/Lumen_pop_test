@@ -1,4 +1,5 @@
-// --- HOME PAGE / INFINITE LEVEL MAP SCENE ---
+
+// --- levels.js ---
 
 class LevelSelectScene extends Phaser.Scene {
   constructor() { 
@@ -6,127 +7,124 @@ class LevelSelectScene extends Phaser.Scene {
   }
 
   create() {
+    // 1. Music Check (Ensure Homepage Music is playing)
+    if (!this.sound.get('bgm_home') || !this.sound.get('bgm_home').isPlaying) {
+        this.sound.stopAll();
+        this.sound.play('bgm_home', { loop: true, volume: 0.5 });
+    }
+
     this.isPopupOpen = false;
     const progress = getPlayerProgress();
     const unlockedLvl = progress.unlockedLevel;
     
-    // Procedurally render 10 levels beyond current progress
-    const renderMax = unlockedLvl + 10; 
-    const spacingY = 150;
+    // 2. Dynamic Progression Logic (Show 50. At lvl 40, show 100, etc.)
+    let renderMax = 50;
+    let threshold = 40;
+    while (unlockedLvl >= threshold) {
+        renderMax += 50;
+        threshold += 50;
+    }
     
-    // Calculate world height dynamically based on the device's screen
-    const worldHeight = Math.max(GAME_HEIGHT, (renderMax * spacingY) + 500);
+    const spacingY = 160;
+    // Calculate full map height
+    const worldHeight = Math.max(GAME_HEIGHT, (renderMax * spacingY) + (GAME_HEIGHT / 2));
 
     // Setup scrollable camera boundaries
     this.cameras.main.setBounds(0, 0, GAME_WIDTH, worldHeight);
 
-    // 1. Repeating Background (Dynamically scaled)
-    this.add.tileSprite(GAME_WIDTH / 2, worldHeight / 2, GAME_WIDTH, worldHeight, 'game_bg').setDepth(-10);
-    this.add.rectangle(GAME_WIDTH / 2, worldHeight / 2, GAME_WIDTH, worldHeight, 0x10052b, 0.4).setDepth(-9);
+    // 3. Render 10-Level Biome Backgrounds (Stacked Vertically)
+    const biomesCount = Math.ceil(renderMax / 10);
+    const biomeHeight = 10 * spacingY;
+    
+    for (let b = 0; b < biomesCount; b++) {
+        let bgIndex = (b % 10) + 1; // Cycles 1-10 infinitely
+        // Calculate the center Y for this 10-level chunk
+        let centerY = worldHeight - (GAME_HEIGHT / 2) - (b * 10 + 4.5) * spacingY;
+        
+        let bg = this.add.image(GAME_WIDTH / 2, centerY, `bg_level_${bgIndex}`);
+        bg.setDisplaySize(GAME_WIDTH, biomeHeight + 50); // +50 prevents pixel gaps
+        bg.setDepth(-10);
+    }
 
-    // 2. Procedural Winding Path
-    let pathGraphics = this.add.graphics().setDepth(0);
-    pathGraphics.lineStyle(16, 0xfbcfe8, 0.5);
+    // 4. Vibrant Ambient Particles
+    for (let p = 0; p < 30; p++) {
+        let px = Phaser.Math.Between(0, GAME_WIDTH);
+        let py = Phaser.Math.Between(0, worldHeight);
+        let particle = this.add.circle(px, py, Phaser.Math.Between(3, 7), 0xffffff, Phaser.Math.FloatBetween(0.3, 0.8)).setDepth(-5);
+        
+        this.tweens.add({
+            targets: particle,
+            y: py - Phaser.Math.Between(100, 300),
+            alpha: 0,
+            duration: Phaser.Math.Between(3000, 6000),
+            repeat: -1,
+            yoyo: false
+        });
+    }
+
+    // 5. Procedural Winding Path
+    let pathGraphics = this.add.graphics().setDepth(-2);
+    pathGraphics.lineStyle(14, 0xffffff, 0.9);
     pathGraphics.beginPath();
-
-    let innerPath = this.add.graphics().setDepth(0);
-    innerPath.lineStyle(6, 0xFFFFFF, 0.9);
-    innerPath.beginPath();
 
     const nodePositions = [];
     for (let i = 1; i <= renderMax; i++) {
-      let y = worldHeight - 250 - ((i - 1) * spacingY);
-      // Center the winding path relative to the dynamic screen width
-      let x = (GAME_WIDTH / 2) + Math.sin(i * 0.7) * 160; 
+      let y = worldHeight - (GAME_HEIGHT / 2) - ((i - 1) * spacingY);
+      let x = (GAME_WIDTH / 2) + Math.sin(i * 0.7) * 125; 
       nodePositions.push({ lvl: i, x, y });
 
-      if (i === 1) {
-        pathGraphics.moveTo(x, y);
-        innerPath.moveTo(x, y);
-      } else {
-        pathGraphics.lineTo(x, y);
-        innerPath.lineTo(x, y);
-      }
+      if (i === 1) pathGraphics.moveTo(x, y);
+      else pathGraphics.lineTo(x, y);
     }
     pathGraphics.strokePath();
-    innerPath.strokePath();
 
-    // 3. Draw Level Nodes & World Titles
-    const worldNames = ["Lumen Meadow", "Crystal Valley", "Twilight Grove", "Starlight Peaks", "Mystic Clouds", "Cosmic Infinity"];
-    
+    // 6. Draw Nodes (Using Custom UI PNGs)
     nodePositions.forEach(pos => {
       this.createNode(pos.lvl, pos.x, pos.y, unlockedLvl, progress);
-
-      if (pos.lvl % 20 === 1) {
-         let wNum = Math.floor(pos.lvl / 20);
-         let wName = worldNames[Math.min(wNum, worldNames.length - 1)];
-         
-         let titleBg = this.add.graphics().setDepth(1);
-         titleBg.fillStyle(0x4a044e, 0.85);
-         titleBg.fillRoundedRect(pos.x - 120, pos.y + 70, 240, 40, 20);
-         titleBg.fillStyle(0xfbcfe8, 1);
-         titleBg.fillRoundedRect(pos.x - 122, pos.y + 68, 244, 44, 22);
-         titleBg.fillStyle(0x4a044e, 1);
-         titleBg.fillRoundedRect(pos.x - 120, pos.y + 70, 240, 40, 20);
-
-         this.add.text(pos.x, pos.y + 90, `WORLD ${wNum + 1}: ${wName}`, {
-             fontSize: '14px', fontStyle: 'bold', color: '#fcd34d'
-         }).setOrigin(0.5).setDepth(2);
-      }
     });
 
-    // 4. Modal Popup Construction
+    // 7. Modal Popup Construction
     this.createPopupUI();
 
-    // 5. Drag/Swipe Scroll Listener
+    // 8. Drag/Swipe Scroll Listener
     this.setupScrolling();
 
-    // 6. Auto-scroll to Current Level (Anchored to dynamic screen center)
-    let targetY = worldHeight - 250 - ((unlockedLvl - 1) * spacingY);
+    // 9. Auto-scroll to Current Level
+    let targetY = worldHeight - (GAME_HEIGHT / 2) - ((unlockedLvl - 1) * spacingY);
     this.cameras.main.scrollY = Math.max(0, targetY - (GAME_HEIGHT / 2));
   }
 
   createNode(lvl, x, y, unlockedLvl, progress) {
-    let btnContainer = this.add.container(x, y).setDepth(2);
-    let btnGfx = this.add.graphics();
-    
     const isUnlocked = lvl <= unlockedLvl;
     const isCurrent = lvl === unlockedLvl;
     const starsEarned = progress.stars[lvl] || 0;
 
+    let btnContainer = this.add.container(x, y).setDepth(2);
+    
+    // Choose specific PNG based on lock state
+    let nodeKey = isUnlocked ? 'node_active' : 'node_locked';
+    let nodeImg = this.add.image(0, 0, nodeKey).setDisplaySize(90, 90);
+    
+    let lvlText = this.add.text(0, isUnlocked ? -6 : 0, isUnlocked ? lvl : '🔒', { 
+      fontSize: isUnlocked ? '34px' : '28px', fontStyle: 'bold', color: '#FFFFFF' 
+    }).setOrigin(0.5);
+
+    btnContainer.add([nodeImg, lvlText]);
+
+    // Current Level Pulse Animation
     if (isCurrent) {
-      btnGfx.fillStyle(0x38bdf8, 1);
-      btnGfx.fillCircle(0, 0, 48);
-      btnGfx.fillStyle(0xbe185d, 1);
-      btnGfx.fillCircle(0, 0, 42);
-      
       this.tweens.add({
         targets: btnContainer, scaleX: 1.15, scaleY: 1.15, 
         duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
       });
-    } else if (isUnlocked) {
-      btnGfx.fillStyle(0xfbcfe8, 1);
-      btnGfx.fillCircle(0, 0, 44);
-      btnGfx.fillStyle(0xc084fc, 1);
-      btnGfx.fillCircle(0, 0, 38);
-    } else {
-      btnGfx.fillStyle(0x475569, 1);
-      btnGfx.fillCircle(0, 0, 40);
-      btnGfx.fillStyle(0x1e293b, 1);
-      btnGfx.fillCircle(0, 0, 36);
     }
-    
-    let lvlText = this.add.text(0, isUnlocked ? -8 : 0, isUnlocked ? lvl : '🔒', { 
-      fontSize: isUnlocked ? '32px' : '28px', fontStyle: 'bold', color: '#FFFFFF' 
-    }).setOrigin(0.5);
 
-    btnContainer.add([btnGfx, lvlText]);
-
+    // Stars logic for beaten levels
     if (isUnlocked && !isCurrent) {
       for (let s = 0; s < 3; s++) {
-        const starColor = s < starsEarned ? '#FCD34D' : '#701a75';
-        let star = this.add.text(-22 + (s * 22), 18, '★', {
-          fontSize: '18px', color: starColor, stroke: '#FFFFFF', strokeThickness: s < starsEarned ? 1 : 0
+        const starColor = s < starsEarned ? '#FCD34D' : '#9ca3af';
+        let star = this.add.text(-24 + (s * 24), 28, '★', {
+          fontSize: '22px', color: starColor, stroke: '#111827', strokeThickness: 3
         }).setOrigin(0.5);
         btnContainer.add(star);
       }
@@ -136,12 +134,8 @@ class LevelSelectScene extends Phaser.Scene {
       btnContainer.setSize(90, 90);
       btnContainer.setInteractive({ useHandCursor: true });
 
-      btnContainer.on('pointerdown', () => { 
-        if (!this.isDraggingMap && !this.isPopupOpen) btnContainer.setScale(0.9); 
-      });
-      btnContainer.on('pointerout', () => { 
-        if (!isCurrent) btnContainer.setScale(1); 
-      });
+      btnContainer.on('pointerdown', () => { if (!this.isDraggingMap && !this.isPopupOpen) btnContainer.setScale(0.9); });
+      btnContainer.on('pointerout', () => { if (!isCurrent) btnContainer.setScale(1); });
       btnContainer.on('pointerup', () => {
         if (!this.isDraggingMap && !this.isPopupOpen) {
           if (!isCurrent) btnContainer.setScale(1);
@@ -178,61 +172,44 @@ class LevelSelectScene extends Phaser.Scene {
     // Popup container aligned to dynamic center
     this.popupContainer = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(200).setVisible(false);
 
-    // Full-screen blocker behind popup (scaled dynamically)
-    let overlay = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.7).setInteractive();
+    // Full-screen blocker behind popup
+    let overlay = this.add.rectangle(0, 0, GAME_WIDTH * 2, GAME_HEIGHT * 2, 0x000000, 0.7).setInteractive();
 
-    let panel = this.add.graphics();
-    panel.fillStyle(0xfbcfe8, 1); panel.fillRoundedRect(-204, -204, 408, 408, 34);
-    panel.fillStyle(0x4a044e, 1); panel.fillRoundedRect(-200, -200, 400, 400, 30);
+    // Use specific PNG for Level Select
+    let panel = this.add.image(0, 0, 'popup_level_select').setDisplaySize(360, 360);
 
-    this.popupTitle = this.add.text(0, -140, 'LEVEL 1', { fontSize: '40px', fontStyle: 'bold', color: '#FFFFFF' }).setOrigin(0.5);
+    this.popupTitle = this.add.text(0, -110, 'LEVEL 1', { fontSize: '38px', fontStyle: 'bold', color: '#FFFFFF' }).setOrigin(0.5);
     
     this.popupStars = [];
     for (let i = 0; i < 3; i++) {
-        let star = this.add.text(-60 + (i * 60), -75, '★', { fontSize: '48px', color: '#701a75' }).setOrigin(0.5);
+        let star = this.add.text(-60 + (i * 60), -40, '★', { fontSize: '54px', color: '#701a75' }).setOrigin(0.5);
         this.popupStars.push(star);
     }
 
-    this.popupTarget = this.add.text(0, 5, 'Target: 0', { fontSize: '24px', fontStyle: 'bold', color: '#fbcfe8' }).setOrigin(0.5);
-    this.popupMoves = this.add.text(0, 45, 'Moves: 0', { fontSize: '24px', fontStyle: 'bold', color: '#FCD34D' }).setOrigin(0.5);
-    this.popupBest = this.add.text(0, 85, 'Unplayed', { fontSize: '20px', fontStyle: 'italic', color: '#a78bfa' }).setOrigin(0.5);
+    this.popupTarget = this.add.text(0, 25, 'Target: 0', { fontSize: '24px', fontStyle: 'bold', color: '#fbcfe8' }).setOrigin(0.5);
+    this.popupMoves = this.add.text(0, 60, 'Moves: 0', { fontSize: '24px', fontStyle: 'bold', color: '#FCD34D' }).setOrigin(0.5);
+    this.popupBest = this.add.text(0, 95, 'Unplayed', { fontSize: '20px', fontStyle: 'italic', color: '#a78bfa' }).setOrigin(0.5);
 
-    // Flattened Play Button
-    let playBorder = this.add.rectangle(0, 150, 204, 64, 0xfbcfe8).setOrigin(0.5);
-    this.playBtn = this.add.rectangle(0, 150, 200, 60, 0xbe185d).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    let playText = this.add.text(0, 150, 'PLAY', { fontSize: '28px', fontStyle: 'bold', color: '#FFFFFF' }).setOrigin(0.5);
+    // Interactive Zone over the built-in Play slot on the PNG
+    this.playZone = this.add.zone(0, 135, 200, 70).setInteractive({ useHandCursor: true });
+    let playText = this.add.text(0, 135, 'PLAY', { fontSize: '32px', fontStyle: 'bold', color: '#FFFFFF', stroke: '#be185d', strokeThickness: 4 }).setOrigin(0.5);
 
-    this.playBtn.on('pointerdown', () => {
-      this.playBtn.setScale(0.95);
-      playBorder.setScale(0.95);
-      playText.setScale(0.95);
-    });
-
-    this.playBtn.on('pointerup', () => {
-      this.playBtn.setScale(1);
-      playBorder.setScale(1);
+    this.playZone.on('pointerdown', () => { playText.setScale(0.9); });
+    this.playZone.on('pointerup', () => {
       playText.setScale(1);
       this.isPopupOpen = false;
-
-      try {
-        if (this.sound && this.sound.context && this.sound.context.state === 'suspended') {
-          this.sound.context.resume();
-        }
-        initAudio(this);
-      } catch (e) {}
-
       this.scene.start('GameScene');
     });
 
-    // Close Button
-    this.closeBtn = this.add.text(150, -150, '✖', { fontSize: '32px', color: '#fbcfe8' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    // Close Button (Top Right)
+    this.closeBtn = this.add.text(140, -140, '✖', { fontSize: '36px', color: '#fbcfe8' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     this.closeBtn.on('pointerup', () => this.closePopup());
 
     this.popupContainer.add([
       overlay, panel, this.popupTitle, 
       ...this.popupStars, 
       this.popupTarget, this.popupMoves, this.popupBest, 
-      playBorder, this.playBtn, playText, this.closeBtn
+      this.playZone, playText, this.closeBtn
     ]);
   }
 
@@ -259,19 +236,19 @@ class LevelSelectScene extends Phaser.Scene {
     const currentCamCenterY = this.cameras.main.scrollY + (this.cameras.main.height / 2);
     this.popupContainer.setPosition(GAME_WIDTH / 2, currentCamCenterY);
     
-    this.popupContainer.setScale(0.8);
+    this.popupContainer.setScale(0.7);
     this.popupContainer.setVisible(true);
     
     this.tweens.add({
         targets: this.popupContainer,
-        scaleX: 1, scaleY: 1, duration: 200, ease: 'Back.easeOut'
+        scale: 1, duration: 250, ease: 'Back.easeOut'
     });
   }
 
   closePopup() {
     this.tweens.add({
       targets: this.popupContainer,
-      scaleX: 0.8, scaleY: 0.8, duration: 150, ease: 'Quad.easeIn',
+      scale: 0.7, duration: 150, ease: 'Quad.easeIn',
       onComplete: () => {
         this.popupContainer.setVisible(false);
         this.isPopupOpen = false;
