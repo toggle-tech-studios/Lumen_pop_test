@@ -1,27 +1,25 @@
 // --- config.js ---
 
-// Core Game Dimensions
+// 1. Core Dynamic Dimensions
 const GAME_WIDTH = window.innerWidth;
 const GAME_HEIGHT = window.innerHeight;
 
-// Grid Settings
+// 2. Responsive Board Grid Math (Fits both Samsung A32 and iPad screens)
 const GRID_COLS = 7;
 const GRID_ROWS = 7;
-
-// FIX: Dynamically clamp the board size so it never spills off a narrow phone screen
-const maxBoardSize = Math.min(GAME_WIDTH * 0.92, 550);
+const maxBoardSize = Math.min(GAME_WIDTH * 0.92, 540);
 const TILE_SIZE = Math.floor(maxBoardSize / Math.max(GRID_COLS, GRID_ROWS)); 
 const BOARD_OFFSET_X = (GAME_WIDTH - (GRID_COLS * TILE_SIZE)) / 2;
 const BOARD_OFFSET_Y = (GAME_HEIGHT - (GRID_ROWS * TILE_SIZE)) / 2 + 25;
 
-// Core Game Variables
+// 3. Global Game State
 let currentLevel = 1;
 let score = 0;
 let movesRemaining = 0;
 let TARGET_SCORE = 0;
 let ACTIVE_COLORS = [];
 
-// FIX: Paths must be relative to index.html, NOT the js folder!
+// 4. Exact Asset Paths matching your GitHub structure
 const ASSET_PATHS = {
     ui: 'assets/ui_assets/',
     logos: 'assets/logos/',
@@ -30,7 +28,7 @@ const ASSET_PATHS = {
     background: 'assets/background/'
 };
 
-// Lumen Configuration
+// 5. Lumens (Matching your exact compressed files ending in _closed and _opened)
 const LUMEN_TYPES = {
   0: { name: 'aether', textureClosed: 'aether_closed', textureOpen: 'aether_opened' },
   1: { name: 'verdant', textureClosed: 'verdant_closed', textureOpen: 'verdant_opened' },
@@ -41,17 +39,27 @@ const LUMEN_TYPES = {
   6: { name: 'nova', textureClosed: 'nova_closed', textureOpen: 'nova_opened' }
 };
 
-// Booster Configuration
+// 6. Booster Settings (Deducts score, gives 0 extra points on pop)
 const BOOSTERS = {
   shuffle: { cost: 100, icon: 'icon_shuffle', scorePenalty: 50, pointsAwarded: 0 },
   bomb: { cost: 150, icon: 'icon_bomb', radius: 1, scorePenalty: 100, pointsAwarded: 0 },
   burst: { cost: 250, icon: 'icon_burst', colorsToClear: 1, scorePenalty: 200, pointsAwarded: 0 }
 };
 
-// Player Save & Progression System
+// 7. Bulletproof Progress System (Never crashes on undefined stars or scores)
 function getPlayerProgress() {
-  const saved = localStorage.getItem('lumenPopSave');
-  return saved ? JSON.parse(saved) : { unlockedLevel: 1, scores: {}, stars: {} };
+  const def = { unlockedLevel: 1, scores: {}, stars: {} };
+  try {
+    const saved = localStorage.getItem('lumenPopSave');
+    if (!saved) return def;
+    const parsed = JSON.parse(saved);
+    if (!parsed.scores) parsed.scores = {};
+    if (!parsed.stars) parsed.stars = {};
+    if (!parsed.unlockedLevel) parsed.unlockedLevel = 1;
+    return parsed;
+  } catch (e) {
+    return def;
+  }
 }
 
 function savePlayerProgress(lvl, endScore, stars) {
@@ -63,10 +71,12 @@ function savePlayerProgress(lvl, endScore, stars) {
     progress.scores[lvl] = endScore;
     progress.stars[lvl] = stars;
   }
-  localStorage.setItem('lumenPopSave', JSON.stringify(progress));
+  try {
+    localStorage.setItem('lumenPopSave', JSON.stringify(progress));
+  } catch (e) {}
 }
 
-// Unlimited Dynamic Level Math generator
+// 8. Infinite Level Scaling Formula
 function getLevelData(lvl) {
   return {
     target: 3000 + ((lvl - 1) * 1000), 
