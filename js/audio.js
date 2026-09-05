@@ -1,167 +1,73 @@
-// --- AUDIO SYSTEM & SOUND EFFECTS ---
+// --- audio.js ---
 
+let audioCtx = null;
+
+// Initialize and unlock the audio context on the first user tap
 function initAudio(scene) {
-  // 1. Initialize Web Audio Context for Procedural SFX
-  if (!audioCtx) {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    audioCtx = new AudioContext();
-  }
-  
-  // CRITICAL FIX: Force the browser to unlock our procedural audio
-  if (audioCtx.state === 'suspended') {
-     audioCtx.resume();
-  }
-
-  // 2. Play the MP3 Background Music (only once)
-  if (!bgmMusic) {
-    bgmMusic = scene.sound.add('gameplayBgm', { loop: true, volume: 0.6 });
-    bgmMusic.play();
-  }
+    // Tie into Phaser's existing audio context to respect iOS/Android autoplay rules
+    if (scene && scene.sound && scene.sound.context) {
+        audioCtx = scene.sound.context;
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    } else if (!audioCtx) {
+        // Fallback safety
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+            audioCtx = new AudioContext();
+        }
+    }
 }
 
-// --- MP3 AUDIO DUCKING LOGIC ---
-function duckMusicVolume(duration, dropTo = 0.15) {
-  if (!bgmMusic || !bgmMusic.isPlaying || !mainScene) return;
-  
-  mainScene.tweens.killTweensOf(bgmMusic);
-  bgmMusic.setVolume(dropTo); 
-  
-  mainScene.tweens.add({
-    targets: bgmMusic,
-    volume: 0.6,
-    delay: duration * 1000, 
-    duration: 400,
-    ease: 'Linear'
-  });
+// Procedural sound effect for dragging over Lumens
+function playLinkSound(scene) {
+    if (!audioCtx || audioCtx.state !== 'running') return;
+    
+    try {
+        let osc = audioCtx.createOscillator();
+        let gainNode = audioCtx.createGain();
+        
+        osc.type = 'sine';
+        // Ascending magical pitch
+        osc.frequency.setValueAtTime(600, audioCtx.currentTime); 
+        osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+        
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+    } catch (e) {
+        // Failsafe to prevent game crashes if audio cannot play
+        console.log("Audio play failed, ignoring.");
+    }
 }
 
-// --- PROCEDURAL SOUND EFFECTS ---
-function playLinkSound(comboLength) {
-  if (!audioCtx) return;
-  if (audioCtx.state === 'suspended') audioCtx.resume(); // Safety net to ensure sound plays
-  duckMusicVolume(0.2); 
+// Procedural sound effect for popping a matched chain or using a booster
+function playPopSound(scene) {
+    if (!audioCtx || audioCtx.state !== 'running') return;
 
-  const osc = audioCtx.createOscillator(); 
-  const gain = audioCtx.createGain(); 
-  osc.type = 'sine';
-  const notes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00, 1046.50, 1174.66, 1318.51]; 
-  osc.frequency.setValueAtTime(notes[Math.min(comboLength - 1, notes.length - 1)], audioCtx.currentTime);
-  
-  // INCREASED VOLUME
-  gain.gain.setValueAtTime(0.4, audioCtx.currentTime); 
-  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-  
-  osc.connect(gain); 
-  gain.connect(audioCtx.destination); 
-  osc.start(); 
-  osc.stop(audioCtx.currentTime + 0.3);
-}
-
-function playPopSound() {
-  if (!audioCtx) return;
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  duckMusicVolume(0.4); 
-
-  const osc = audioCtx.createOscillator(); 
-  const gain = audioCtx.createGain(); 
-  osc.type = 'triangle';
-  
-  osc.frequency.setValueAtTime(800, audioCtx.currentTime); 
-  osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2); 
-  
-  // INCREASED VOLUME
-  gain.gain.setValueAtTime(0.7, audioCtx.currentTime); 
-  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-  
-  osc.connect(gain); 
-  gain.connect(audioCtx.destination); 
-  osc.start(); 
-  osc.stop(audioCtx.currentTime + 0.2);
-}
-
-function playBounceSound() {
-  if (!audioCtx) return;
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  
-  const osc = audioCtx.createOscillator(); 
-  const gain = audioCtx.createGain(); 
-  osc.type = 'sine';
-  
-  osc.frequency.setValueAtTime(150, audioCtx.currentTime); 
-  osc.frequency.exponentialRampToValueAtTime(60, audioCtx.currentTime + 0.1);
-  
-  // INCREASED VOLUME
-  gain.gain.setValueAtTime(0.2, audioCtx.currentTime); 
-  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-  
-  osc.connect(gain); 
-  gain.connect(audioCtx.destination); 
-  osc.start(); 
-  osc.stop(audioCtx.currentTime + 0.1);
-}
-
-// --- FUSION ORB SPECIAL EFFECTS ---
-function playFusionChargeSound() {
-  if (!audioCtx) return;
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  duckMusicVolume(1.5, 0.05); // Duck the music almost completely during the charge
-
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = 'sine';
-
-  osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 1.2);
-
-  // INCREASED VOLUME
-  gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
-  gain.gain.linearRampToValueAtTime(0.6, audioCtx.currentTime + 1.0);
-  gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 1.2);
-
-  osc.connect(gain); 
-  gain.connect(audioCtx.destination);
-  osc.start(); 
-  osc.stop(audioCtx.currentTime + 1.2);
-}
-
-function playFusionExplosionSound() {
-  if (!audioCtx) return;
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  
-  // The Deep Boom
-  const boomOsc = audioCtx.createOscillator();
-  const boomGain = audioCtx.createGain();
-  boomOsc.type = 'square';
-  boomOsc.frequency.setValueAtTime(150, audioCtx.currentTime);
-  boomOsc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.6);
-
-  // INCREASED VOLUME
-  boomGain.gain.setValueAtTime(0.8, audioCtx.currentTime);
-  boomGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
-
-  boomOsc.connect(boomGain); 
-  boomGain.connect(audioCtx.destination);
-  boomOsc.start(); 
-  boomOsc.stop(audioCtx.currentTime + 0.6);
-
-  // The Magical Sparkles
-  for(let i=0; i<3; i++) {
-     setTimeout(() => {
-        if (!audioCtx) return;
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
+    try {
+        let osc = audioCtx.createOscillator();
+        let gainNode = audioCtx.createGain();
+        
         osc.type = 'triangle';
-        osc.frequency.setValueAtTime(1200 + (Math.random() * 400), audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.4);
+        // Dropping pitch to simulate a bubble pop
+        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.15);
         
-        // INCREASED VOLUME
-        gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
         
-        osc.connect(gain); 
-        gain.connect(audioCtx.destination);
-        osc.start(); 
-        osc.stop(audioCtx.currentTime + 0.4);
-     }, i * 120);
-  }
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.15);
+    } catch (e) {
+        console.log("Audio play failed, ignoring.");
+    }
 }
