@@ -40,8 +40,8 @@
 <body>
     <div id="debug-log"></div>
 
-    <!-- Phaser 3 Engine -->
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js" 
+    <!-- ADDED CROSSORIGIN: This stops the browser from hiding the real error -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js" crossorigin="anonymous"
             onerror="document.getElementById('debug-log').style.display='block'; document.getElementById('debug-log').innerHTML+='❌ Failed to load Phaser engine from internet.<hr>'"></script>
     
     <!-- Game Modules mapped to the js/ folder -->
