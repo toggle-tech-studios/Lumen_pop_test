@@ -3,7 +3,10 @@
 // --- BOOSTER ACTIONS ---
 function applyShuffle(scene) {
   if (gameState !== 'PLAYING') return;
-  score -= 200; updateScoreUI(); playPopSound();
+  score -= 100; // New Price
+  updateScoreUI(); 
+  playPopSound();
+  
   for(let r=0; r<GRID_ROWS; r++){
     for(let c=0; c<GRID_COLS; c++){
       let l = board[r][c];
@@ -21,43 +24,65 @@ function applyShuffle(scene) {
 
 function applyBomb(scene) {
   if (gameState !== 'PLAYING') return;
-  isAnimating = true; score -= 400; updateScoreUI(); playPopSound();
-  let tr = Phaser.Math.Between(1, GRID_ROWS-2); 
-  let tc = Phaser.Math.Between(1, GRID_COLS-2);
-  for(let r=tr-1; r<=tr+1; r++){
-    for(let c=tc-1; c<=tc+1; c++){
+  isAnimating = true; 
+  score -= 150; // New Price
+  
+  let destroyedCount = 0;
+  // Pick a center point that allows a 5x5 explosion
+  let tr = Phaser.Math.Between(2, GRID_ROWS-3); 
+  let tc = Phaser.Math.Between(2, GRID_COLS-3);
+  
+  // UPGRADED: 5x5 Explosion Radius
+  for(let r = Math.max(0, tr-2); r <= Math.min(GRID_ROWS-1, tr+2); r++){
+    for(let c = Math.max(0, tc-2); c <= Math.min(GRID_COLS-1, tc+2); c++){
       let l = board[r][c];
       if(l) {
+        destroyedCount++;
         if (l.floatTween) { l.floatTween.stop(); l.floatTween = null; }
         scene.tweens.killTweensOf(l.sprite);
-        createBurst(scene, l.sprite.x, l.sprite.y, l.color, 5, 40);
+        createBurst(scene, l.sprite.x, l.sprite.y, l.color, 6, 50);
         l.sprite.destroy(); 
         board[r][c] = null;
       }
     }
   }
-  scene.cameras.main.shake(100, 0.003);
-  scene.time.delayedCall(200, () => applyGravity(scene));
+  
+  score += (destroyedCount * 30); // Reward player for the explosion
+  updateScoreUI(); 
+  playPopSound();
+  scene.cameras.main.shake(250, 0.008); // Stronger screen shake
+  scene.time.delayedCall(300, () => applyGravity(scene));
 }
 
 function applyBurst(scene) {
   if (gameState !== 'PLAYING') return;
-  isAnimating = true; score -= 600; updateScoreUI(); playPopSound();
-  let targetType = Phaser.Math.Between(0, ACTIVE_COLORS - 1);
+  isAnimating = true; 
+  score -= 250; // New Price
+  
+  // UPGRADED: Target TWO colors instead of one
+  let targetType1 = Phaser.Math.Between(0, ACTIVE_COLORS - 1);
+  let targetType2 = (targetType1 + 1) % ACTIVE_COLORS; 
+  let destroyedCount = 0;
+
   for(let r=0; r<GRID_ROWS; r++){
     for(let c=0; c<GRID_COLS; c++){
       let l = board[r][c];
-      if(l && l.type === targetType) {
+      if(l && (l.type === targetType1 || l.type === targetType2)) {
+        destroyedCount++;
         if (l.floatTween) { l.floatTween.stop(); l.floatTween = null; }
         scene.tweens.killTweensOf(l.sprite);
-        createBurst(scene, l.sprite.x, l.sprite.y, l.color, 5, 40);
+        createBurst(scene, l.sprite.x, l.sprite.y, l.color, 6, 50);
         l.sprite.destroy(); 
         board[r][c] = null;
       }
     }
   }
-  scene.cameras.main.shake(100, 0.003);
-  scene.time.delayedCall(200, () => applyGravity(scene));
+  
+  score += (destroyedCount * 40); // Massive reward for sweeping two colors
+  updateScoreUI(); 
+  playPopSound();
+  scene.cameras.main.shake(250, 0.008);
+  scene.time.delayedCall(300, () => applyGravity(scene));
 }
 
 // --- CORE GRID LOGIC ---
@@ -172,6 +197,7 @@ function handlePointerMove(scene, pointer) {
             const rowDiff = lumen.row - last.row;
             const colDiff = lumen.col - last.col;
 
+            // Permits horizontal, vertical, AND diagonal linking
             if (Math.abs(rowDiff) <= 1 && Math.abs(colDiff) <= 1 && !(rowDiff === 0 && colDiff === 0)) {
               if (lumen.type === currentType || lumen.type === FUSION_ORB_TYPE) {
                 if (selectedLumens.length === 1) {
