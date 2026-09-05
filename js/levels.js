@@ -13,14 +13,16 @@ class LevelSelectScene extends Phaser.Scene {
     // Procedurally render 10 levels beyond current progress
     const renderMax = unlockedLvl + 10; 
     const spacingY = 150;
-    const worldHeight = Math.max(1100, (renderMax * spacingY) + 500);
+    
+    // Calculate world height dynamically based on the device's screen
+    const worldHeight = Math.max(GAME_HEIGHT, (renderMax * spacingY) + 500);
 
     // Setup scrollable camera boundaries
-    this.cameras.main.setBounds(0, 0, 660, worldHeight);
+    this.cameras.main.setBounds(0, 0, GAME_WIDTH, worldHeight);
 
-    // 1. Repeating Background
-    this.add.tileSprite(330, worldHeight / 2, 660, worldHeight, 'game_bg').setDepth(-10);
-    this.add.rectangle(330, worldHeight / 2, 660, worldHeight, 0x10052b, 0.4).setDepth(-9);
+    // 1. Repeating Background (Dynamically scaled)
+    this.add.tileSprite(GAME_WIDTH / 2, worldHeight / 2, GAME_WIDTH, worldHeight, 'game_bg').setDepth(-10);
+    this.add.rectangle(GAME_WIDTH / 2, worldHeight / 2, GAME_WIDTH, worldHeight, 0x10052b, 0.4).setDepth(-9);
 
     // 2. Procedural Winding Path
     let pathGraphics = this.add.graphics().setDepth(0);
@@ -34,7 +36,8 @@ class LevelSelectScene extends Phaser.Scene {
     const nodePositions = [];
     for (let i = 1; i <= renderMax; i++) {
       let y = worldHeight - 250 - ((i - 1) * spacingY);
-      let x = 330 + Math.sin(i * 0.7) * 160; 
+      // Center the winding path relative to the dynamic screen width
+      let x = (GAME_WIDTH / 2) + Math.sin(i * 0.7) * 160; 
       nodePositions.push({ lvl: i, x, y });
 
       if (i === 1) {
@@ -78,9 +81,9 @@ class LevelSelectScene extends Phaser.Scene {
     // 5. Drag/Swipe Scroll Listener
     this.setupScrolling();
 
-    // 6. Auto-scroll to Current Level
+    // 6. Auto-scroll to Current Level (Anchored to dynamic screen center)
     let targetY = worldHeight - 250 - ((unlockedLvl - 1) * spacingY);
-    this.cameras.main.scrollY = Math.max(0, targetY - (1100 / 2));
+    this.cameras.main.scrollY = Math.max(0, targetY - (GAME_HEIGHT / 2));
   }
 
   createNode(lvl, x, y, unlockedLvl, progress) {
@@ -172,11 +175,11 @@ class LevelSelectScene extends Phaser.Scene {
   }
 
   createPopupUI() {
-    // Popup container without setScrollFactor to preserve hitboxes
-    this.popupContainer = this.add.container(330, 550).setDepth(200).setVisible(false);
+    // Popup container aligned to dynamic center
+    this.popupContainer = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(200).setVisible(false);
 
-    // Full-screen blocker behind popup
-    let overlay = this.add.rectangle(0, 0, 660, 1100, 0x000000, 0.7).setInteractive();
+    // Full-screen blocker behind popup (scaled dynamically)
+    let overlay = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.7).setInteractive();
 
     let panel = this.add.graphics();
     panel.fillStyle(0xfbcfe8, 1); panel.fillRoundedRect(-204, -204, 408, 408, 34);
@@ -254,7 +257,7 @@ class LevelSelectScene extends Phaser.Scene {
 
     // Dynamically align popup directly to current camera view center
     const currentCamCenterY = this.cameras.main.scrollY + (this.cameras.main.height / 2);
-    this.popupContainer.setPosition(330, currentCamCenterY);
+    this.popupContainer.setPosition(GAME_WIDTH / 2, currentCamCenterY);
     
     this.popupContainer.setScale(0.8);
     this.popupContainer.setVisible(true);
