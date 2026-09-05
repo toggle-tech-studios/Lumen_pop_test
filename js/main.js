@@ -9,7 +9,6 @@ function getLevelBackground(lvl) {
 class BootScene extends Phaser.Scene {
     constructor() { super({ key: 'BootScene' }); }
     preload() { 
-        // Updated to use your renamed logo.png
         this.load.image('loading_logo', ASSET_PATHS.logos + 'logo.png'); 
     }
     create() { this.scene.start('PreloadScene'); }
@@ -19,6 +18,9 @@ class PreloadScene extends Phaser.Scene {
     constructor() { super({ key: 'PreloadScene' }); }
     
     init() {
+        // Just in case the device was rotated during boot
+        if (typeof updateGameDimensions === 'function') updateGameDimensions();
+        
         this.loadProgress = 0;
         this.visualProgress = 0;
         this.isLoaded = false;
@@ -35,7 +37,6 @@ class PreloadScene extends Phaser.Scene {
                 .setDisplaySize(Math.min(200, GAME_WIDTH * 0.4), Math.min(200, GAME_WIDTH * 0.4));
         }
 
-        // Setup smooth progress bar
         this.barWidth = Math.min(300, GAME_WIDTH * 0.7);
         this.barHeight = 16;
         this.barX = cx - (this.barWidth / 2);
@@ -49,7 +50,7 @@ class PreloadScene extends Phaser.Scene {
 
         this.load.on('progress', (value) => { this.loadProgress = value; });
 
-        // LOAD AUDIO (Updated to your renamed files without spaces!)
+        // LOAD AUDIO (Without spaces)
         this.load.audio('bgm_home', ASSET_PATHS.music + 'homepage_music.mp3');
         this.load.audio('bgm_game', ASSET_PATHS.music + 'gameplay_music.mp3');
 
@@ -65,8 +66,7 @@ class PreloadScene extends Phaser.Scene {
         this.load.image('icon_bomb', ASSET_PATHS.ui + 'icon_bomb.png');
         this.load.image('icon_burst', ASSET_PATHS.ui + 'icon_burst.png');
 
-        // LAZY LOADING FIX: We ONLY load Background 1 here. 
-        // This stops the memory crash and cuts load time by 70%.
+        // LAZY LOADING FIX
         this.load.image('bg_level_1', ASSET_PATHS.background + 'bg_level_1.png');
 
         // LOAD LUMENS
@@ -88,7 +88,6 @@ class PreloadScene extends Phaser.Scene {
         
         let currentWidth = this.barWidth * this.visualProgress;
         
-        // CANVAS FIX: Prevents a crash when the bar width is smaller than the rounded corners
         if (currentWidth >= 16) {
             this.barFill.fillRoundedRect(this.barX, this.barY, currentWidth, this.barHeight, 8);
         }
@@ -109,7 +108,6 @@ class PreloadScene extends Phaser.Scene {
 class GameScene extends Phaser.Scene {
     constructor() { super({ key: 'GameScene' }); }
     
-    // Dynamic preloader: Loads the specific background for this level just before starting
     preload() {
         const bgKey = getLevelBackground(currentLevel);
         if (!this.textures.exists(bgKey)) {
@@ -118,6 +116,11 @@ class GameScene extends Phaser.Scene {
     }
 
     create() {
+        // NEW: Recalculate exact screen size right before we draw the board!
+        if (typeof updateGameDimensions === 'function') {
+            updateGameDimensions();
+        }
+
         try {
             if (this.sound && this.cache.audio.exists('bgm_game')) {
                 this.sound.stopAll(); 
@@ -126,8 +129,9 @@ class GameScene extends Phaser.Scene {
         } catch (e) {}
 
         const bgKey = getLevelBackground(currentLevel);
-        const finalBg = this.textures.exists(bgKey) ? bgKey : 'bg_level_1'; // Failsafe
+        const finalBg = this.textures.exists(bgKey) ? bgKey : 'bg_level_1';
 
+        // Background spans the exact new dimensions
         this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, finalBg)
             .setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setDepth(-10);
 
