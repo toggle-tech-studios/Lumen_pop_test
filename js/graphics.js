@@ -1,13 +1,14 @@
+
 // --- PROCEDURAL GRAPHICS & UI DRAWING ---
 
 function generateKidFriendlyBackground(scene) {
   const canvas = document.createElement('canvas'); 
-  canvas.width = 660; 
-  canvas.height = 1100;
+  canvas.width = GAME_WIDTH; 
+  canvas.height = GAME_HEIGHT;
   const ctx = canvas.getContext('2d'); 
   const w = canvas.width, h = canvas.height;
   
-  // 1. Deep Space Background Gradient
+  // 1. Deep Space Background Gradient (Dynamically scaled)
   const sky = ctx.createLinearGradient(0, 0, 0, h);
   sky.addColorStop(0, '#10052b'); // Very dark purple
   sky.addColorStop(0.5, '#0b1035'); // Dark navy
@@ -29,7 +30,7 @@ function generateKidFriendlyBackground(scene) {
   }
   ctx.globalAlpha = 1.0;
 
-  // 3. Magical Comet Swooshes
+  // 3. Magical Comet Swooshes (Anchored for height)
   ctx.save();
   ctx.lineCap = 'round';
   ctx.beginPath();
@@ -40,8 +41,8 @@ function generateKidFriendlyBackground(scene) {
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.moveTo(700, 900);
-  ctx.bezierCurveTo(450, 850, 200, 1000, -50, 950);
+  ctx.moveTo(700, h - 200);
+  ctx.bezierCurveTo(450, h - 250, 200, h - 100, -50, h - 150);
   ctx.strokeStyle = 'rgba(192, 132, 252, 0.15)'; // Purple
   ctx.lineWidth = 8;
   ctx.stroke();
@@ -67,8 +68,8 @@ function generateKidFriendlyBackground(scene) {
 
   drawGlowingStar(120, 150, 25, '#fde047'); 
   drawGlowingStar(550, 280, 20, '#38bdf8'); 
-  drawGlowingStar(80, 750, 15, '#f472b6');  
-  drawGlowingStar(500, 950, 30, '#c084fc'); 
+  drawGlowingStar(80, h - 350, 15, '#f472b6');  
+  drawGlowingStar(500, h - 150, 30, '#c084fc'); 
   drawGlowingStar(330, 60, 12, '#ffffff');  
   
   scene.textures.addCanvas('bg', canvas);
@@ -94,7 +95,7 @@ function generateAllCanvasTextures(scene) {
   createFusionOrbTexture(scene);
 }
 
-// --- NEW: FUSION ORB TEXTURE GENERATOR ---
+// --- FUSION ORB TEXTURE GENERATOR ---
 function createFusionOrbTexture(scene) {
   const canvas = document.createElement('canvas'); 
   canvas.width = 90; // Slightly larger than normal Lumens (78px)
@@ -328,11 +329,17 @@ function drawPinkBoardGrid(scene) {
   }
 }
 
+// --- DYNAMICALLY ANCHORED BOOSTER DOCK ---
 function buildBoosterDock(scene) {
   const ui = scene.add.graphics().setDepth(5);
   
-  ui.fillStyle(0xfbcfe8, 1); ui.fillRoundedRect(39, 937, 582, 102, 26);
-  ui.fillStyle(0x4a044e, 1); ui.fillRoundedRect(42, 940, 576, 96, 24);
+  // Dock anchors dynamically to the bottom of the screen
+  const dockY = GAME_HEIGHT - 163;
+  const dockInnerY = GAME_HEIGHT - 160;
+  const btnY = GAME_HEIGHT - 112;
+  
+  ui.fillStyle(0xfbcfe8, 1); ui.fillRoundedRect(39, dockY, 582, 102, 26);
+  ui.fillStyle(0x4a044e, 1); ui.fillRoundedRect(42, dockInnerY, 576, 96, 24);
 
   const boosters = [ 
     { name: 'SHUFFLE', icon: 'icon_shuffle', cost: 100, action: () => applyShuffle(scene) }, 
@@ -341,7 +348,7 @@ function buildBoosterDock(scene) {
   ];
 
   boosters.forEach((b, i) => {
-    const btnX = 138 + i * 192, btnY = 988;
+    const btnX = 138 + i * 192;
     const btnZone = scene.add.zone(btnX, btnY, 150, 70).setInteractive({ useHandCursor: true }).setDepth(10);
     const btnGfx = scene.add.graphics().setDepth(6);
     
