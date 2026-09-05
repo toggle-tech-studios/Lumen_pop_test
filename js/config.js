@@ -1,101 +1,94 @@
-// --- GAME CONFIGURATION & GLOBAL VARIABLES ---
+// --- config.js ---
 
-// --- DYNAMIC FULLSCREEN CALCULATION ---
-const GAME_WIDTH = 660;
-const SCREEN_RATIO = window.innerHeight / window.innerWidth;
-// We ensure the game is at least 1100px tall, but expands to fill taller phones
-const GAME_HEIGHT = Math.max(1100, GAME_WIDTH * SCREEN_RATIO); 
+// Core Game Dimensions (Dynamically scaled to any device)
+const GAME_WIDTH = window.innerWidth;
+const GAME_HEIGHT = window.innerHeight;
 
 // Grid Settings
-const GRID_ROWS = 7;
 const GRID_COLS = 7;
-const TILE_SIZE = 78;  
-// Dynamically center the board horizontally
+const GRID_ROWS = 7;
+const TILE_SIZE = Math.floor(GAME_WIDTH / 8); 
 const BOARD_OFFSET_X = (GAME_WIDTH - (GRID_COLS * TILE_SIZE)) / 2;
-// Push the board down slightly on taller screens
-const BOARD_OFFSET_Y = GAME_HEIGHT > 1200 ? 340 : 290;
+const BOARD_OFFSET_Y = (GAME_HEIGHT - (GRID_ROWS * TILE_SIZE)) / 2 + 30;
 
-// Special Mechanics
-const FUSION_ORB_TYPE = 99; 
-
-// Ultra-Bright Lumen Designs
-const LUMEN_CONFIGS = [
-  { name: 'solar',   base: '#F59E0B', light: '#FDE047', glow: '#FEF08A', shape: 'star',    faceY: 2,  color: 0xFDE047 }, 
-  { name: 'nova',    base: '#E11D48', light: '#FB7185', glow: '#FECDD3', shape: 'heart',   faceY: -3, color: 0xFB7185 }, 
-  { name: 'aether',  base: '#0284C7', light: '#38BDF8', glow: '#BAE6FD', shape: 'diamond', faceY: 2,  color: 0x38BDF8 }, 
-  { name: 'verdant', base: '#059669', light: '#34D399', glow: '#A7F3D0', shape: 'droplet', faceY: 5,  color: 0x34D399 }, 
-  { name: 'cosmic',  base: '#7C3AED', light: '#C084FC', glow: '#E9D5FF', shape: 'round',   faceY: 0,  color: 0xC084FC }, 
-  { name: 'terra',   base: '#EA580C', light: '#FB923C', glow: '#FED7AA', shape: 'hexagon', faceY: 0,  color: 0xFB923C }, 
-  { name: 'blaze',   base: '#BE123C', light: '#F43F5E', glow: '#FECDD3', shape: 'flame',   faceY: 7,  color: 0xF43F5E }  
-];
-
-// --- ♾️ INFINITE LEVEL GENERATOR (INTENSE SCALING) ---
-function getLevelData(level) {
-  let colors = 4; 
-  if (level > 10) colors = 5;
-  if (level > 30) colors = 6;
-  if (level > 60) colors = 7; 
-
-  let target = 3000 + ((level - 1) * 1000);
-  let moves = 35 + ((level - 1) * 20);
-
-  return { level, target, moves, colors };
-}
-
+// Core Game Variables
 let currentLevel = 1;
-let TARGET_SCORE = 3000;
-let ACTIVE_COLORS = 4;
-
-// --- 💾 SAVE SYSTEM ---
-function getPlayerProgress() {
-  const savedLevel = parseInt(localStorage.getItem('lumen_unlocked_level')) || 1;
-  const starsData = JSON.parse(localStorage.getItem('lumen_stars_data')) || {};
-  const scoresData = JSON.parse(localStorage.getItem('lumen_scores_data')) || {};
-  return { unlockedLevel: savedLevel, stars: starsData, scores: scoresData };
-}
-
-function saveLevelProgress(lvl, score, starsCount) {
-  const progress = getPlayerProgress();
-  
-  if (lvl === progress.unlockedLevel && starsCount > 0) {
-    localStorage.setItem('lumen_unlocked_level', lvl + 1);
-  }
-  
-  const currentBestStars = progress.stars[lvl] || 0;
-  if (starsCount > currentBestStars) {
-    progress.stars[lvl] = starsCount;
-    localStorage.setItem('lumen_stars_data', JSON.stringify(progress.stars));
-  }
-  
-  const currentBestScore = progress.scores[lvl] || 0;
-  if (score > currentBestScore) {
-    progress.scores[lvl] = score;
-    localStorage.setItem('lumen_scores_data', JSON.stringify(progress.scores));
-  }
-}
-
-// Global Game State Variables
-let board = [];
-let selectedLumens = [];
-let isDragging = false;
-let currentType = null;
-let currentDirection = null; 
-
-let lineLayer;
-let lineGlowLayer;
-let particlesLayer;
-let overlayLayer;
-
 let score = 0;
-let movesRemaining = 35;
-let scoreText;
-let movesText;
-let progressBar;
-let starIcons = [];
-let isAnimating = false;
-let gameState = 'PLAYING'; 
-let boosterButtons = []; 
+let movesRemaining = 0;
+let TARGET_SCORE = 0;
+let ACTIVE_COLORS = [];
 
-let audioCtx;
-let bgmMusic; 
-let mainScene; 
+// Directory Paths (Mapping exactly to your GitHub structure)
+const ASSET_PATHS = {
+    ui: 'assets/ui_assets/',
+    logos: 'assets/logos/',
+    music: 'assets/music/',
+    lumens: 'assets/lumens/',
+    background: 'assets/background/'
+};
+
+// Lumen Configuration (Using _opened and _closed exactly as you uploaded them)
+const LUMEN_TYPES = {
+  0: { name: 'aether', textureClosed: 'aether_closed', textureOpen: 'aether_opened' },
+  1: { name: 'verdant', textureClosed: 'verdant_closed', textureOpen: 'verdant_opened' },
+  2: { name: 'solar', textureClosed: 'solar_closed', textureOpen: 'solar_opened' },
+  3: { name: 'cosmic', textureClosed: 'cosmic_closed', textureOpen: 'cosmic_opened' },
+  4: { name: 'blaze', textureClosed: 'blaze_closed', textureOpen: 'blaze_opened' },
+  5: { name: 'terra', textureClosed: 'terra_closed', textureOpen: 'terra_opened' },
+  6: { name: 'nova', textureClosed: 'nova_closed', textureOpen: 'nova_opened' }
+};
+
+// Booster Configuration (Less intense, deducts points, awards 0 extra points)
+const BOOSTERS = {
+  shuffle: { 
+    cost: 100, 
+    icon: 'icon_shuffle',
+    scorePenalty: 50,       // Deducts 50 points upon use
+    pointsAwarded: 0 
+  },
+  bomb: { 
+    cost: 150, 
+    icon: 'icon_bomb',
+    radius: 1,              // Reduced intensity: 3x3 radius instead of 5x5
+    scorePenalty: 100,      // Deducts 100 points upon use
+    pointsAwarded: 0        // Exploded Lumens do NOT give extra points
+  },
+  burst: { 
+    cost: 250, 
+    icon: 'icon_burst',
+    colorsToClear: 1,       // Reduced intensity: clears 1 color instead of 2
+    scorePenalty: 200,      // Deducts 200 points upon use
+    pointsAwarded: 0        // Cleared Lumens do NOT give extra points
+  }
+};
+
+// Player Save & Progression System
+function getPlayerProgress() {
+  const saved = localStorage.getItem('lumenPopSave');
+  return saved ? JSON.parse(saved) : { unlockedLevel: 1, scores: {}, stars: {} };
+}
+
+function savePlayerProgress(lvl, endScore, stars) {
+  const progress = getPlayerProgress();
+  // Only unlock the next level if the player got at least 1 star (won the level)
+  if (lvl === progress.unlockedLevel && stars > 0) {
+    progress.unlockedLevel++;
+  }
+  // Save highest score and stars
+  if (!progress.scores[lvl] || endScore > progress.scores[lvl]) {
+    progress.scores[lvl] = endScore;
+    progress.stars[lvl] = stars;
+  }
+  localStorage.setItem('lumenPopSave', JSON.stringify(progress));
+}
+
+// Unlimited Dynamic Level Math generator
+function getLevelData(lvl) {
+  const baseTarget = 3000;
+  const baseMoves = 35;
+  return {
+    target: baseTarget + ((lvl - 1) * 1000), 
+    moves: baseMoves + ((lvl - 1) * 2),      
+    colors: Math.min(4 + Math.floor((lvl - 1) / 10), 7) // Starts with 4 colors, caps at 7
+  };
+}
