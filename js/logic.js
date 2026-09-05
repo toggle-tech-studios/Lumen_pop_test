@@ -6,29 +6,31 @@ let linkedLumens = [];
 let currentLinkColor = -1;
 let gameSceneRef = null;
 let isGameOver = false;
-let activeBooster = null; // Tracks if the player is currently aiming a Bomb or Burst
+let activeBooster = null;
+let isAnimating = false; // NEW: Locks input while pieces are falling to prevent crashes!
 
 function initGameLogic(scene) {
     gameSceneRef = scene;
     isGameOver = false;
     isDragging = false;
+    isAnimating = false; // Reset lock on start
     linkedLumens = [];
     activeBooster = null;
     score = 0;
     
     generateGrid();
 
-    // Global pointer up listener to end drawing/linking
     scene.input.on('pointerup', () => {
         if (!isGameOver && isDragging) {
             handlePointerUp(scene);
         }
     });
 
-    // Global pointer move listener to update the floating connection line
     scene.input.on('pointermove', (pointer) => {
         if (!isGameOver && isDragging) {
-            drawConnectionLines(scene, pointer);
+            if (typeof drawConnectionLines === 'function') {
+                drawConnectionLines(scene, pointer);
+            }
         }
     });
 }
@@ -45,7 +47,6 @@ function generateGrid() {
 }
 
 function createRandomLumen() {
-    // 2% chance for a Fusion Orb (Type 99), otherwise pick a random active color
     if (Math.random() < 0.02) {
         return { type: 99 };
     }
@@ -54,62 +55,56 @@ function createRandomLumen() {
 }
 
 function handlePointerDown(scene, r, c) {
-    if (isGameOver) return;
+    // If the game is over OR pieces are currently animating/falling, ignore the tap!
+    if (isGameOver || isAnimating) return;
 
-    // 1. Check if we are aiming a targeted booster
     if (activeBooster === 'bomb' || activeBooster === 'burst') {
         handleBoosterTarget(scene, r, c);
         return;
     }
 
-    // 2. Otherwise, start a normal drag/link
     let lumen = grid[r][c];
     if (lumen) {
         isDragging = true;
         currentLinkColor = lumen.type;
         linkedLumens = [{ r, c }];
         
-        updateLumenVisuals(scene); // Swaps texture to _opened
-        drawConnectionLines(scene, scene.input.activePointer);
+        if (typeof updateLumenVisuals === 'function') updateLumenVisuals(scene);
+        if (typeof drawConnectionLines === 'function') drawConnectionLines(scene, scene.input.activePointer);
     }
 }
 
 function handlePointerOver(scene, r, c) {
-    if (isGameOver || !isDragging || activeBooster) return;
+    if (isGameOver || !isDragging || activeBooster || isAnimating) return;
 
     let lumen = grid[r][c];
     if (!lumen) return;
 
-    // Check if it's already in the link
     let existingIndex = linkedLumens.findIndex(l => l.r === r && l.c === c);
     
     if (existingIndex !== -1) {
-        // If we backtrack, remove the end of the chain
         if (existingIndex === linkedLumens.length - 2) {
             linkedLumens.pop();
-            // Re-evaluate the link color in case we backtracked over a Fusion Orb
             currentLinkColor = grid[linkedLumens[0].r][linkedLumens[0].c].type; 
             for (let i = 1; i < linkedLumens.length; i++) {
                 let t = grid[linkedLumens[i].r][linkedLumens[i].c].type;
                 if (t !== 99 && currentLinkColor === 99) currentLinkColor = t;
             }
-            updateLumenVisuals(scene);
-            drawConnectionLines(scene, scene.input.activePointer);
+            if (typeof updateLumenVisuals === 'function') updateLumenVisuals(scene);
+            if (typeof drawConnectionLines === 'function') drawConnectionLines(scene, scene.input.activePointer);
         }
         return;
     }
 
-    // Check adjacency (horizontal, vertical, diagonal)
     let last = linkedLumens[linkedLumens.length - 1];
     let isAdjacent = Math.abs(last.r - r) <= 1 && Math.abs(last.c - c) <= 1;
 
-    // Can link if adjacent AND (color matches OR one of them is a Fusion Orb)
     if (isAdjacent && (lumen.type === currentLinkColor || lumen.type === 99 || currentLinkColor === 99)) {
         linkedLumens.push({ r, c });
         if (currentLinkColor === 99 && lumen.type !== 99) {
-            currentLinkColor = lumen.type; // Adopt color if we started on a Fusion Orb
+            currentLinkColor = lumen.type; 
         }
-        updateLumenVisuals(scene);
+        if (typeof updateLumenVisuals === 'function') updateLumenVisuals(scene);
         if (typeof playLinkSound === 'function') {
             try { playLinkSound(scene); } catch (e) {}
         }
@@ -124,16 +119,16 @@ function handlePointerUp(scene) {
         movesRemaining--;
         scene.movesText.setText(`MOVES\n${movesRemaining}`);
     } else {
-        // Failed link, reset visuals
         linkedLumens = [];
-        updateLumenVisuals(scene);
-        drawConnectionLines(scene);
+        if (typeof updateLumenVisuals === 'function') updateLumenVisuals(scene);
+        if (typeof drawConnectionLines === 'function') drawConnectionLines(scene);
     }
 }
 
 function processMatches(scene) {
+    isAnimating = true; // Lock input while processing match
+
     let points = linkedLumens.length * 10;
-    // Bonus points for longer chains
     if (linkedLumens.length >= 5) points += 50; 
     if (linkedLumens.length >= 8) points += 100;
 
@@ -143,12 +138,12 @@ function processMatches(scene) {
     }
 
     linkedLumens.forEach(pos => {
-        playPopAnimation(scene, pos.r, pos.c, grid[pos.r][pos.c].type);
-        grid[pos.r][pos.c] = null; // Clear from logic
+        if (typeof playPopAnimation === 'function') playPopAnimation(scene, pos.r, pos.c, grid[pos.r][pos.c].type);
+        grid[pos.r][pos.c] = null; 
     });
 
     linkedLumens = [];
-    drawConnectionLines(scene);
+    if (typeof drawConnectionLines === 'function') drawConnectionLines(scene);
     
     scene.time.delayedCall(200, () => applyGravity(scene));
 }
@@ -169,9 +164,13 @@ function applyGravity(scene) {
                         lumenSprites[r][c] = sprite;
                         lumenSprites[k][c] = null;
                         
-                        sprite.gridRow = r;
-                        let newY = BOARD_OFFSET_Y + (r * TILE_SIZE) + (TILE_SIZE / 2);
-                        animateLumenDrop(scene, r, c, newY, 0);
+                        // NEW: Safety check prevents "null is not an object" crash
+                        if (sprite) {
+                            sprite.gridRow = r;
+                            let newY = BOARD_OFFSET_Y + (r * TILE_SIZE) + (TILE_SIZE / 2);
+                            if (typeof animateLumenDrop === 'function') animateLumenDrop(scene, r, c, newY, 0);
+                        }
+                        
                         dropped = true;
                         break;
                     }
@@ -193,7 +192,7 @@ function applyGravity(scene) {
             
             let x = BOARD_OFFSET_X + (c * TILE_SIZE) + (TILE_SIZE / 2);
             let targetY = BOARD_OFFSET_Y + (r * TILE_SIZE) + (TILE_SIZE / 2);
-            let startY = targetY - GAME_HEIGHT; // Drop from off-screen top
+            let startY = targetY - GAME_HEIGHT; 
             
             let textureKey = grid[r][c].type === 99 ? 'fusion_orb' : LUMEN_TYPES[grid[r][c].type].textureClosed;
             
@@ -211,65 +210,64 @@ function applyGravity(scene) {
             
             let delay = r * 50;
             if (delay > maxDelay) maxDelay = delay;
-            animateLumenDrop(scene, r, c, targetY, delay);
+            if (typeof animateLumenDrop === 'function') animateLumenDrop(scene, r, c, targetY, delay);
             dropped = true;
         }
     }
 
+    // Wait for animations to finish, then UNLOCK the board
     scene.time.delayedCall(maxDelay + 450, () => {
-        updateLumenVisuals(scene);
+        if (typeof updateLumenVisuals === 'function') updateLumenVisuals(scene);
         checkWinLossConditions(scene);
+        isAnimating = false; // Grid settles -> Allow player input again!
     });
 }
 
 function updateScore(amount) {
-    // Allows negative amounts (for boosters), but prevents score from going below 0
     score = Math.max(0, score + amount);
-    gameSceneRef.scoreText.setText(`SCORE: ${score}`);
+    if (gameSceneRef && gameSceneRef.scoreText) {
+        gameSceneRef.scoreText.setText(`SCORE: ${score}`);
+    }
 }
 
 function activateBooster(scene, type) {
-    if (isGameOver) return;
+    if (isGameOver || isAnimating) return; // Prevent booster overlap
     
     let boosterData = BOOSTERS[type];
     
-    // Shuffle acts immediately
     if (type === 'shuffle') {
         updateScore(-boosterData.scorePenalty);
         activeBooster = null;
         
-        // Destroy all existing sprites instantly
         for (let r = 0; r < GRID_ROWS; r++) {
             for (let c = 0; c < GRID_COLS; c++) {
                 if (lumenSprites[r][c]) lumenSprites[r][c].destroy();
             }
         }
         generateGrid();
-        drawLumens(scene);
+        if (typeof drawLumens === 'function') drawLumens(scene);
         if (typeof playPopSound === 'function') {
             try { playPopSound(scene); } catch(e){}
         }
     } else {
-        // Bomb and Burst require targeting
         activeBooster = type;
-        scene.cameras.main.flash(200, 251, 207, 232); // Slight pink flash to indicate aiming mode
+        scene.cameras.main.flash(200, 251, 207, 232); 
     }
 }
 
 function handleBoosterTarget(scene, centerR, centerC) {
     let type = activeBooster;
-    activeBooster = null; // Reset aiming mode
+    activeBooster = null; 
     let toDestroy = [];
     let targetLumen = grid[centerR][centerC];
     
     if (!targetLumen) return;
 
+    isAnimating = true; // Lock input during explosion
     let boosterData = BOOSTERS[type];
-    // Deduct the score penalty. No additional points are awarded for popped pieces.
     updateScore(-boosterData.scorePenalty);
 
     if (type === 'bomb') {
-        // 3x3 Explosion (Radius 1)
         for (let r = centerR - boosterData.radius; r <= centerR + boosterData.radius; r++) {
             for (let c = centerC - boosterData.radius; c <= centerC + boosterData.radius; c++) {
                 if (r >= 0 && r < GRID_ROWS && c >= 0 && c < GRID_COLS && grid[r][c]) {
@@ -278,7 +276,6 @@ function handleBoosterTarget(scene, centerR, centerC) {
             }
         }
     } else if (type === 'burst') {
-        // Target 1 color globally
         let colorToClear = targetLumen.type;
         for (let r = 0; r < GRID_ROWS; r++) {
             for (let c = 0; c < GRID_COLS; c++) {
@@ -294,7 +291,7 @@ function handleBoosterTarget(scene, centerR, centerC) {
     }
 
     toDestroy.forEach(pos => {
-        playPopAnimation(scene, pos.r, pos.c, grid[pos.r][pos.c].type);
+        if (typeof playPopAnimation === 'function') playPopAnimation(scene, pos.r, pos.c, grid[pos.r][pos.c].type);
         grid[pos.r][pos.c] = null; 
     });
 
@@ -308,10 +305,14 @@ function checkWinLossConditions(scene) {
         if (movesRemaining >= 15) stars = 3;
         else if (movesRemaining >= 5) stars = 2;
         
-        savePlayerProgress(currentLevel, score, stars);
-        scene.time.delayedCall(500, () => showEndGamePopup(scene, true, stars));
+        if (typeof savePlayerProgress === 'function') savePlayerProgress(currentLevel, score, stars);
+        scene.time.delayedCall(500, () => {
+            if (typeof showEndGamePopup === 'function') showEndGamePopup(scene, true, stars);
+        });
     } else if (movesRemaining <= 0) {
         isGameOver = true;
-        scene.time.delayedCall(500, () => showEndGamePopup(scene, false, 0));
+        scene.time.delayedCall(500, () => {
+            if (typeof showEndGamePopup === 'function') showEndGamePopup(scene, false, 0);
+        });
     }
 }
