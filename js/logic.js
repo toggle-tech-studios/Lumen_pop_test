@@ -110,7 +110,9 @@ function handlePointerOver(scene, r, c) {
             currentLinkColor = lumen.type; // Adopt color if we started on a Fusion Orb
         }
         updateLumenVisuals(scene);
-        try { playLinkSound(scene); } catch (e) {}
+        if (typeof playLinkSound === 'function') {
+            try { playLinkSound(scene); } catch (e) {}
+        }
     }
 }
 
@@ -136,7 +138,9 @@ function processMatches(scene) {
     if (linkedLumens.length >= 8) points += 100;
 
     updateScore(points);
-    try { playPopSound(scene); } catch (e) {}
+    if (typeof playPopSound === 'function') {
+        try { playPopSound(scene); } catch (e) {}
+    }
 
     linkedLumens.forEach(pos => {
         playPopAnimation(scene, pos.r, pos.c, grid[pos.r][pos.c].type);
@@ -146,7 +150,7 @@ function processMatches(scene) {
     linkedLumens = [];
     drawConnectionLines(scene);
     
-    scene.time.delayedCall(250, () => applyGravity(scene));
+    scene.time.delayedCall(200, () => applyGravity(scene));
 }
 
 function applyGravity(scene) {
@@ -194,7 +198,7 @@ function applyGravity(scene) {
             let textureKey = grid[r][c].type === 99 ? 'fusion_orb' : LUMEN_TYPES[grid[r][c].type].textureClosed;
             
             let sprite = scene.add.image(x, startY, textureKey)
-                .setDisplaySize(TILE_SIZE * 0.85, TILE_SIZE * 0.85)
+                .setDisplaySize(TILE_SIZE * 0.82, TILE_SIZE * 0.82)
                 .setDepth(2)
                 .setInteractive({ useHandCursor: true });
                 
@@ -242,7 +246,9 @@ function activateBooster(scene, type) {
         }
         generateGrid();
         drawLumens(scene);
-        try { playPopSound(scene); } catch(e){}
+        if (typeof playPopSound === 'function') {
+            try { playPopSound(scene); } catch(e){}
+        }
     } else {
         // Bomb and Burst require targeting
         activeBooster = type;
@@ -259,6 +265,7 @@ function handleBoosterTarget(scene, centerR, centerC) {
     if (!targetLumen) return;
 
     let boosterData = BOOSTERS[type];
+    // Deduct the score penalty. No additional points are awarded for popped pieces.
     updateScore(-boosterData.scorePenalty);
 
     if (type === 'bomb') {
@@ -282,7 +289,9 @@ function handleBoosterTarget(scene, centerR, centerC) {
         }
     }
 
-    try { playPopSound(scene); } catch(e){}
+    if (typeof playPopSound === 'function') {
+        try { playPopSound(scene); } catch(e){}
+    }
 
     toDestroy.forEach(pos => {
         playPopAnimation(scene, pos.r, pos.c, grid[pos.r][pos.c].type);
