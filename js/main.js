@@ -48,9 +48,9 @@ class PreloadScene extends Phaser.Scene {
 
         this.load.on('progress', (value) => { this.loadProgress = value; });
 
-        // --- Load Music ---
-        this.load.audio('bgm_home', ASSET_PATHS.music + 'homepage music.mp3');
-        this.load.audio('bgm_game', ASSET_PATHS.music + 'gameplay music.mp3');
+        // FIX 1: URL Encode spaces in audio file names to prevent network crashes!
+        this.load.audio('bgm_home', ASSET_PATHS.music + 'homepage%20music.mp3');
+        this.load.audio('bgm_game', ASSET_PATHS.music + 'gameplay%20music.mp3');
 
         // --- Load UI ---
         this.load.image('ui_top_panel', ASSET_PATHS.ui + 'ui_top_panel.png');
@@ -80,12 +80,15 @@ class PreloadScene extends Phaser.Scene {
     update() {
         if (this.transitioning) return;
         
-        // Visual smoothing for the progress bar
         this.visualProgress += (this.loadProgress - this.visualProgress) * 0.15;
         this.barFill.clear();
         this.barFill.fillStyle(0xbe185d, 1);
-        if (this.barWidth * this.visualProgress > 0) {
-            this.barFill.fillRoundedRect(this.barX, this.barY, this.barWidth * this.visualProgress, this.barHeight, 8);
+        
+        let currentWidth = this.barWidth * this.visualProgress;
+        
+        // FIX 2: Canvas crashes if a rounded rect's width is smaller than its radius (8 * 2 = 16)
+        if (currentWidth > 16) {
+            this.barFill.fillRoundedRect(this.barX, this.barY, currentWidth, this.barHeight, 8);
         }
 
         if (this.isLoaded && this.visualProgress >= 0.99) {
@@ -117,11 +120,9 @@ class GameScene extends Phaser.Scene {
             this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, bgKey).setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setDepth(-10);
         }
 
-        // FIX: Panel & Text relative alignment so it looks perfect on Samsung A32 and iPad
         const panelW = Math.min(GAME_WIDTH - 20, 500);
         this.add.image(GAME_WIDTH / 2, 60, 'ui_top_panel').setDisplaySize(panelW, 85).setDepth(10);
             
-        // Use relative placement (0.35 of the panel width) so it dynamically scales on all phones
         this.levelText = this.add.text(GAME_WIDTH / 2 - (panelW * 0.35), 60, `LVL\n${currentLevel}`, { 
             fontSize: '16px', fontStyle: 'bold', color: '#ffffff', align: 'center' 
         }).setOrigin(0.5).setDepth(11);
@@ -134,7 +135,6 @@ class GameScene extends Phaser.Scene {
             fontSize: '16px', fontStyle: 'bold', color: '#ffffff', align: 'center' 
         }).setOrigin(0.5).setDepth(11);
 
-        // Score aligned nicely below the top panel
         this.scoreText = this.add.text(GAME_WIDTH / 2 - (panelW * 0.45), 115, `SCORE: ${score}`, { 
             fontSize: '18px', fontStyle: 'bold', color: '#38bdf8' 
         }).setOrigin(0, 0.5).setDepth(11);
@@ -146,7 +146,6 @@ class GameScene extends Phaser.Scene {
     }
 }
 
-// Phaser initialization
 const phaserConfig = {
     type: Phaser.AUTO, width: window.innerWidth, height: window.innerHeight,
     backgroundColor: '#10052b',
