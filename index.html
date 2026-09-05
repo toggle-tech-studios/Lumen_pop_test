@@ -5,27 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Lumen Pop</title>
     
-    <!-- App Logo / Favicon loaded exactly from your logos folder -->
     <link rel="icon" type="image/png" href="assets/logos/Lumen Pop main logo.png">
     <link rel="apple-touch-icon" href="assets/logos/Lumen Pop main logo.png">
     
     <style>
-        body {
+        * { box-sizing: border-box; }
+        html, body {
             margin: 0;
             padding: 0;
-            background-color: #10052b; /* Deep cosmic purple */
+            width: 100%;
+            height: 100%;
+            background-color: #10052b;
             overflow: hidden;
-            touch-action: none; /* Prevents unwanted zooming/scrolling on mobile */
+            touch-action: none;
         }
         canvas {
             display: block;
+            margin: 0 auto;
         }
     </style>
 
     <!-- Phaser 3 Framework -->
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
     
-    <!-- Game Modules -->
+    <!-- Game Modules in Strict Dependency Order -->
     <script src="config.js"></script>
     <script src="audio.js"></script>
     <script src="graphics.js"></script>
