@@ -6,7 +6,7 @@ class LevelSelectScene extends Phaser.Scene {
   }
 
   create() {
-    // 1. Safe Audio Playback for Home Music
+    // 1. Safe Audio Playback (Prevents Safari Audio Context Crashes)
     try {
       if (this.sound && this.cache.audio.exists('bgm_home')) {
         let homeMusic = this.sound.get('bgm_home');
@@ -23,7 +23,7 @@ class LevelSelectScene extends Phaser.Scene {
     const progress = getPlayerProgress();
     const unlockedLvl = progress.unlockedLevel;
     
-    // 2. Dynamic Progression Logic (Show 50. At lvl 40, show 100, etc.)
+    // 2. Dynamic Progression Logic (Expands map as you play)
     let renderMax = 50;
     let threshold = 40;
     while (unlockedLvl >= threshold) { 
@@ -42,10 +42,18 @@ class LevelSelectScene extends Phaser.Scene {
     
     // FIX: Anchors backgrounds to the absolute bottom (0.5, 1) to eliminate the black gap
     for (let b = 0; b < biomesCount; b++) {
-        let bgIndex = (b % 10) + 1; // Cycles 1-10 infinitely
+        let bgIndex = (b % 10) + 1; 
+        let bgKey = `bg_level_${bgIndex}`;
+        
+        // LAZY LOADING SUPPORT: If the player hasn't reached this biome yet and the 
+        // heavy image isn't downloaded, safely fallback to level 1's background.
+        if (!this.textures.exists(bgKey)) {
+            bgKey = 'bg_level_1';
+        }
+
         let bottomY = worldHeight - (b * biomeHeight);
         
-        let bg = this.add.image(GAME_WIDTH / 2, bottomY, `bg_level_${bgIndex}`);
+        let bg = this.add.image(GAME_WIDTH / 2, bottomY, bgKey);
         bg.setOrigin(0.5, 1); // Anchored cleanly to the bottom
         bg.setDisplaySize(GAME_WIDTH, biomeHeight + 50); // +50 overlaps slightly to hide seams
         bg.setDepth(-10);
@@ -58,9 +66,9 @@ class LevelSelectScene extends Phaser.Scene {
 
     const nodePositions = [];
     for (let i = 1; i <= renderMax; i++) {
-      // Start plotting from the bottom of the world upwards
       let y = worldHeight - (GAME_HEIGHT / 2) - ((i - 1) * spacingY);
-      let x = (GAME_WIDTH / 2) + Math.sin(i * 0.7) * (GAME_WIDTH * 0.25); // Scales wave width to screen
+      // Dynamically scales the winding wave width to the device screen
+      let x = (GAME_WIDTH / 2) + Math.sin(i * 0.7) * (GAME_WIDTH * 0.25); 
       
       nodePositions.push({ lvl: i, x, y });
       
@@ -100,12 +108,10 @@ class LevelSelectScene extends Phaser.Scene {
 
     btnContainer.add([nodeImg, lvlText]);
 
-    // Current Level Pulse Animation
     if (isCurrent) {
       this.tweens.add({ targets: btnContainer, scaleX: 1.15, scaleY: 1.15, duration: 800, yoyo: true, repeat: -1 });
     }
 
-    // Stars logic for beaten levels
     if (isUnlocked && !isCurrent) {
       for (let s = 0; s < 3; s++) {
         let starColor = s < starsEarned ? '#FCD34D' : '#9ca3af';
@@ -183,7 +189,6 @@ class LevelSelectScene extends Phaser.Scene {
     this.popupMoves = this.add.text(0, 55, 'Moves: 0', { fontSize: '22px', fontStyle: 'bold', color: '#FCD34D' }).setOrigin(0.5);
     this.popupBest = this.add.text(0, 85, 'Unplayed', { fontSize: '18px', fontStyle: 'italic', color: '#a78bfa' }).setOrigin(0.5);
 
-    // Interactive zone over the PNG's built-in play slot
     this.playZone = this.add.zone(0, 125, 180, 60).setInteractive({ useHandCursor: true });
     let playText = this.add.text(0, 125, 'PLAY', { fontSize: '28px', fontStyle: 'bold', color: '#FFFFFF', stroke: '#be185d', strokeThickness: 4 }).setOrigin(0.5);
 
